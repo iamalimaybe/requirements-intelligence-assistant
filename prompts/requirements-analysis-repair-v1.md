@@ -104,74 +104,10 @@ Allowed hallucination check result values:
 - blocked
 
 Validation errors:
-FAIL: Model output does not match the schema.
-
-1. Path: $
-   Error: Additional properties are not allowed ('frontend_task' was unexpected)
-
-2. Path: $
-   Error: 'facts_used' is a required property
-
-3. Path: $
-   Error: 'unknowns' is a required property
-
-4. Path: $
-   Error: 'client_questions' is a required property
-
-5. Path: $
-   Error: 'backend_tasks' is a required property
-
-6. Path: $
-   Error: 'frontend_tasks' is a required property
-
-7. Path: $.database_considerations.0
-   Error: 'depends_on' is a required property
-
-8. Path: $.database_considerations.1
-   Error: 'depends_on' is a required property
-
-9. Path: $.test_cases.0
-   Error: 'depends_on' is a required property
+PASTE_VALIDATION_ERRORS_HERE
 
 Invalid JSON:
-{
-  "frontend_task": {
-    "status": "ready",
-    "description": "Pass selected hierarchyAgent and date range to report endpoint"
-  },
-  "database_considerations": [
-    {
-      "item": "Source tables for the report",
-      "status": "blocked",
-      "reason": "Not provided by client"
-    },
-    {
-      "item": "Exact field name for the metric to be summed",
-      "status": "blocked",
-      "reason": "Not provided by client"
-    }
-  ],
-  "test_cases": [
-    {
-      "name": "Basic query test",
-      "status": "blocked",
-      "given": "companyCode = <company_code>, hierarchyAgent = <hierarchy_agent>, startDate = <start_date>, endDate = <end_date>",
-      "expected": "Sum of metric field for specified company and hierarchy agent within date range"
-    }
-  ],
-  "hallucination_checks": [
-    {
-      "check": "Source tables for the report are known",
-      "result": "blocked",
-      "notes": "Source tables not provided by client"
-    },
-    {
-      "check": "Exact metric field name is known",
-      "result": "blocked",
-      "notes": "Exact metric field name not provided by client"
-    }
-  ]
-}
+PASTE_INVALID_JSON_HERE
 ```
 
 ## Expected Behavior

@@ -1,0 +1,49 @@
+{
+  "facts_used": [
+    "Frontend already has a hierarchy agent endpoint"
+  ],
+  "unknowns": [
+    "source tables for the report",
+    "exact field name for the metric to be summed"
+  ],
+  "client_questions": [
+    "What are the source tables for the Production Report?",
+    "What is the exact field to sum for the Production Report?"
+  ],
+  "backend_tasks": [
+    {
+      "task": "Define input contract for Production Report",
+      "status": "ready",
+      "reason": "Frontend passes companyCode, hierarchyAgent, startDate, and endDate",
+      "depends_on": []
+    }
+  ],
+  "frontend_tasks": [
+    {
+      "task": "Pass selected hierarchyAgent and date range (startDate, endDate) to backend",
+      "status": "ready",
+      "reason": "Frontend passes hierarchyAgent and date range (startDate, endDate) to backend",
+      "depends_on": []
+    }
+  ],
+  "database_considerations": [
+    {
+      "item": "Source tables for the report",
+      "status": "blocked",
+      "reason": "Not provided by client",
+      "depends_on": [
+        "source tables for the report"
+      ]
+    },
+    {
+      "item": "Exact field name for the metric to be summed",
+      "status": "blocked",
+      "reason": "Not provided by client",
+      "depends_on": [
+        "exact field name for the metric to be summed"
+      ]
+    }
+  ],
+  "test_cases": [],
+  "hallucination_checks": []
+}
