@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Local/cache/model files
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# Runtime/generated artifacts
+logs/
+tmp/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
