@@ -1,0 +1,121 @@
+{
+  "facts_used": [
+    "Report name: Production Report",
+    "Frontend already has a hierarchy agent endpoint",
+    "Frontend will pass the selected hierarchyAgent to the report",
+    "Backend report inputs are companyCode, hierarchyAgent, startDate, endDate",
+    "Date filtering should use DATE_ADDED",
+    "Totals should be summed for the selected period",
+    "The report should not traverse hierarchy unless later clarified",
+    "Report name: Production Report.",
+    "Frontend already has a hierarchy agent endpoint.",
+    "Frontend will pass the selected hierarchyAgent to the report.",
+    "Backend report inputs are companyCode, hierarchyAgent, startDate, endDate.",
+    "Date filtering should use DATE_ADDED.",
+    "Totals should be summed for the selected period.",
+    "Source tables are not provided yet.",
+    "The exact summation field is not provided yet.",
+    "The report should not traverse hierarchy unless later clarified."
+  ],
+  "unknowns": [
+    "Source tables are not provided yet",
+    "The exact summation field is not provided yet",
+    "source tables for the report",
+    "summation field"
+  ],
+  "client_questions": [
+    "What is the exact summation field for the report?",
+    "What are the source tables for the Production Report?",
+    "What is the exact summation field for the Production Report?",
+    "Please clarify: Source tables are not provided yet",
+    "Please clarify: The exact summation field is not provided yet",
+    "Please clarify: source tables for the report",
+    "Please clarify: summation field"
+  ],
+  "backend_tasks": [
+    {
+      "task": "Define the backend input contract for Production Report using companyCode, hierarchyAgent, startDate, and endDate",
+      "status": "ready",
+      "reason": "The required backend report inputs are already known.",
+      "depends_on": []
+    },
+    {
+      "task": "Apply DATE_ADDED filtering for the selected startDate and endDate period",
+      "status": "blocked",
+      "reason": "The source tables are not provided yet.",
+      "depends_on": [
+        "source tables for the report"
+      ]
+    },
+    {
+      "task": "Sum the selected production metric for the filtered period",
+      "status": "blocked",
+      "reason": "The exact summation field is not provided yet.",
+      "depends_on": [
+        "summation field"
+      ]
+    }
+  ],
+  "frontend_tasks": [
+    {
+      "task": "Pass companyCode, selected hierarchyAgent, startDate, and endDate to the backend report request",
+      "status": "ready",
+      "reason": "The frontend already has the hierarchy agent endpoint and will pass the selected hierarchyAgent.",
+      "depends_on": []
+    }
+  ],
+  "database_considerations": [
+    {
+      "item": "Identify source tables for the Production Report",
+      "status": "blocked",
+      "reason": "Source tables are not provided yet.",
+      "depends_on": [
+        "source tables for the report"
+      ]
+    },
+    {
+      "item": "Identify the exact summation field for totals",
+      "status": "blocked",
+      "reason": "The exact summation field is not provided yet.",
+      "depends_on": [
+        "summation field"
+      ]
+    }
+  ],
+  "test_cases": [
+    {
+      "name": "Validate required input contract",
+      "status": "ready",
+      "given": "companyCode, hierarchyAgent, startDate, and endDate are provided",
+      "expected": "The report request is accepted for processing.",
+      "depends_on": []
+    },
+    {
+      "name": "Validate blocked aggregation logic",
+      "status": "blocked",
+      "given": "source tables or summation field are not confirmed",
+      "expected": "Aggregation implementation remains blocked until missing information is provided.",
+      "depends_on": [
+        "source tables for the report",
+        "summation field"
+      ]
+    }
+  ],
+  "hallucination_checks": [
+    {
+      "check": "No table names are invented",
+      "result": "warning",
+      "notes": "Source tables are not provided, so any table name would be unsupported."
+    },
+    {
+      "check": "No hierarchy traversal is added",
+      "result": "pass",
+      "notes": "The known facts say the report should not traverse hierarchy unless later clarified."
+    },
+    {
+      "check": "No fake sample values are used",
+      "result": "warning",
+      "notes": "Test cases should use symbolic input names instead of invented company, agent, or date values."
+    }
+  ]
+}

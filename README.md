@@ -305,6 +305,46 @@ WORKFLOW RESULT: PASS
 
 This proves the project can move from local model generation to validated output without manual prompt-copying.
 
+## One-Command Local LLM Workflow
+
+The full local workflow can be run with one command:
+
+```powershell
+python .\scripts\run_ollama_requirements_workflow.py `
+  --model qwen3:4b `
+  --prompt .\prompts\requirements-analysis-generation-v1.txt `
+  --context .\contexts\production-report-context.json `
+  --generated-output .\model-outputs\one-command-generated-output.json `
+  --normalized-output .\model-outputs\one-command-normalized-output.json `
+  --enriched-output .\model-outputs\one-command-enriched-output.json
+```
+
+This command performs:
+
+```text
+prompt → Ollama → raw JSON → normalize → enrich → validate
+```
+
+Expected final result:
+
+```text
+OLLAMA WORKFLOW RESULT: PASS
+```
+
+For repeated local experiments, use ignored scratch output paths:
+
+```powershell
+python .\scripts\run_ollama_requirements_workflow.py `
+  --model qwen3:4b `
+  --prompt .\prompts\requirements-analysis-generation-v1.txt `
+  --context .\contexts\production-report-context.json `
+  --generated-output .\scratch\generated-output.json `
+  --normalized-output .\scratch\normalized-output.json `
+  --enriched-output .\scratch\enriched-output.json
+```
+
+The committed `model-outputs/one-command-*.json` files are kept as reproducible demo evidence.
+
 ## Key Result
 
 The strongest workflow so far is:
