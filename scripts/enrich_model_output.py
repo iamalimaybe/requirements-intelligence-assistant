@@ -88,6 +88,48 @@ def item_key(item: dict[str, Any], key_field: str) -> str:
 
     return ""
 
+def question_covers_unknown(question: str, unknown: str) -> bool:
+    question_text = normalize_text(question)
+    unknown_text = normalize_text(unknown)
+
+    important_terms = [
+        term
+        for term in unknown_text.replace("exact", "").replace("field name", "field").split()
+        if len(term) >= 5
+    ]
+
+    return any(term in question_text for term in important_terms)
+
+
+def add_questions_for_uncovered_unknowns(
+    unknowns: list[str],
+    client_questions: list[str],
+) -> list[str]:
+    questions: list[str] = []
+    seen: set[str] = set()
+
+    for question in client_questions:
+        if not isinstance(question, str) or not question.strip():
+            continue
+
+        key = normalize_text(question)
+
+        if key not in seen:
+            questions.append(question.strip())
+            seen.add(key)
+
+    for unknown in unknowns:
+        if not isinstance(unknown, str) or not unknown.strip():
+            continue
+
+        fallback_question = f"Please clarify: {unknown.strip()}"
+        key = normalize_text(fallback_question)
+
+        if key not in seen:
+            questions.append(fallback_question)
+            seen.add(key)
+
+    return questions
 
 def merge_objects(
     existing: list[dict[str, Any]],
@@ -172,9 +214,15 @@ def enrich_output(model_output: dict[str, Any], context: dict[str, Any]) -> dict
             normalized_model_output.get("unknowns", []),
             context.get("required_unknowns", []),
         ),
-        "client_questions": merge_string_lists(
-            normalized_model_output.get("client_questions", []),
-            context.get("client_questions", []),
+        "client_questions": add_questions_for_uncovered_unknowns(
+            unknowns=merge_string_lists(
+                normalized_model_output.get("unknowns", []),
+                context.get("required_unknowns", []),
+            ),
+            client_questions=merge_string_lists(
+                normalized_model_output.get("client_questions", []),
+                context.get("client_questions", []),
+            ),
         ),
         "backend_tasks": merge_objects(
             normalized_model_output.get("backend_tasks", []),

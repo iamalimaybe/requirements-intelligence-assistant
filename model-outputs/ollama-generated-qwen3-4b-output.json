@@ -1,0 +1,18 @@
+{
+  "facts_used": [
+    "Report name: Production Report",
+    "Frontend already has a hierarchy agent endpoint",
+    "Frontend will pass the selected hierarchyAgent to the report",
+    "Backend report inputs are companyCode, hierarchyAgent, startDate, endDate",
+    "Date filtering should use DATE_ADDED",
+    "Totals should be summed for the selected period",
+    "The report should not traverse hierarchy unless later clarified"
+  ],
+  "unknowns": [
+    "Source tables are not provided yet",
+    "The exact summation field is not provided yet"
+  ],
+  "client_questions": [
+    "What is the exact summation field for the report?"
+  ]
+}

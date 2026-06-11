@@ -274,6 +274,37 @@ WORKFLOW RESULT: PASS
 
 This command is the current main proof of the project workflow.
 
+## Ollama API Generation
+
+The project can generate local model output directly through Ollama instead of manually copying responses from the UI.
+
+Generate raw model output:
+
+```powershell
+python .\scripts\generate_with_ollama.py `
+  --model qwen3:4b `
+  --prompt .\prompts\requirements-analysis-generation-v1.txt `
+  --output .\model-outputs\ollama-generated-qwen3-4b-output.json
+```
+
+Then run the full workflow:
+
+```powershell
+python .\scripts\run_requirements_workflow.py `
+  --input .\model-outputs\ollama-generated-qwen3-4b-output.json `
+  --context .\contexts\production-report-context.json `
+  --normalized-output .\model-outputs\ollama-generated-normalized-output.json `
+  --enriched-output .\model-outputs\ollama-generated-enriched-output.json
+```
+
+Expected final result:
+
+```text
+WORKFLOW RESULT: PASS
+```
+
+This proves the project can move from local model generation to validated output without manual prompt-copying.
+
 ## Key Result
 
 The strongest workflow so far is:
