@@ -422,6 +422,19 @@ known-good output passes
 known-bad outputs fail
 ```
 
+## Multi-Context Regression Test Runner
+
+The multi-context regression runner verifies that the same validation system works across multiple requirement contexts.
+
+Run:
+
+```powershell
+python .\scripts\run_multi_context_regression_tests.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json `
+  .\scratch\review-moderation-enriched-output.json `
+  .\contexts\review-moderation-context.json```
+
 ## Key Result
 
 The strongest workflow so far is:
