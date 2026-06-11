@@ -92,13 +92,34 @@ def question_covers_unknown(question: str, unknown: str) -> bool:
     question_text = normalize_text(question)
     unknown_text = normalize_text(unknown)
 
-    important_terms = [
-        term
-        for term in unknown_text.replace("exact", "").replace("field name", "field").split()
-        if len(term) >= 5
+    ignored_terms = {
+        "exact",
+        "complete",
+        "provided",
+        "required",
+        "records",
+        "feedback",
+    }
+
+    unknown_terms = [
+        term.strip()
+        for term in unknown_text.replace("field name", "field").split()
+        if len(term.strip()) >= 5 and term.strip() not in ignored_terms
     ]
 
-    return any(term in question_text for term in important_terms)
+    if not unknown_terms:
+        return False
+
+    matched_terms = [
+        term
+        for term in unknown_terms
+        if term in question_text or f"{term}s" in question_text
+    ]
+
+    if len(unknown_terms) <= 2:
+        return len(matched_terms) >= 1
+
+    return len(matched_terms) >= 2
 
 
 def add_questions_for_uncovered_unknowns(
@@ -120,6 +141,9 @@ def add_questions_for_uncovered_unknowns(
 
     for unknown in unknowns:
         if not isinstance(unknown, str) or not unknown.strip():
+            continue
+
+        if any(question_covers_unknown(question, unknown) for question in questions):
             continue
 
         fallback_question = f"Please clarify: {unknown.strip()}"

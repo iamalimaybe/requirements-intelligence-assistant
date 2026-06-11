@@ -1,0 +1,188 @@
+{
+  "context_id": "review-moderation-dashboard",
+  "title": "Review Moderation Dashboard Requirement Context",
+  "known_facts": [
+    "Feature name: Review Moderation Dashboard.",
+    "The feature is for internal admin users.",
+    "Admin users need to review user-submitted feedback records.",
+    "The listing must show long feedback text in a readable way without breaking the layout.",
+    "Admin users must be able to inspect the full feedback content.",
+    "Admin users must be able to filter feedback records.",
+    "Admin users must be able to update the review status.",
+    "Suggested anonymized fields are id, submitted_by, feedback_text, feedback_type, review_status, review_notes, submitted_at, reviewed_at, and reviewed_by.",
+    "Suggested review status values are pending, approved, rejected, and needs_follow_up.",
+    "The exact source table or collection is not provided yet.",
+    "The exact filter set is not fully confirmed yet.",
+    "The exact authorization rule for admin access is not provided yet."
+  ],
+  "required_unknowns": [
+    "source table or collection for feedback records",
+    "complete filter set",
+    "admin authorization rule"
+  ],
+  "client_questions": [
+    "What is the source table or collection for feedback records?",
+    "Which filters are required for the Review Moderation Dashboard?",
+    "What authorization rule should be used to restrict access to internal admin users?"
+  ],
+  "required_backend_tasks": [
+    {
+      "task": "Define the backend response contract for feedback records using id, submitted_by, feedback_text, feedback_type, review_status, review_notes, submitted_at, reviewed_at, and reviewed_by",
+      "status": "ready",
+      "reason": "The anonymized output fields are already defined.",
+      "depends_on": []
+    },
+    {
+      "task": "Add backend support for updating review_status and review_notes",
+      "status": "ready",
+      "reason": "Admin users must be able to update the review status.",
+      "depends_on": []
+    },
+    {
+      "task": "Apply filtering for feedback records based on the confirmed filter set",
+      "status": "blocked",
+      "reason": "The exact filter set is not fully confirmed yet.",
+      "depends_on": [
+        "complete filter set"
+      ]
+    },
+    {
+      "task": "Load feedback records from the confirmed source table or collection",
+      "status": "blocked",
+      "reason": "The exact source table or collection is not provided yet.",
+      "depends_on": [
+        "source table or collection for feedback records"
+      ]
+    },
+    {
+      "task": "Restrict moderation endpoints to authorized internal admin users",
+      "status": "blocked",
+      "reason": "The exact authorization rule for admin access is not provided yet.",
+      "depends_on": [
+        "admin authorization rule"
+      ]
+    }
+  ],
+  "required_frontend_tasks": [
+    {
+      "task": "Display feedback records in an admin listing without allowing long feedback_text values to break the layout",
+      "status": "ready",
+      "reason": "The listing must show long feedback text in a readable way without breaking the layout.",
+      "depends_on": []
+    },
+    {
+      "task": "Provide a way for admin users to inspect the full feedback_text content",
+      "status": "ready",
+      "reason": "Admin users must be able to inspect the full feedback content.",
+      "depends_on": []
+    },
+    {
+      "task": "Provide controls for updating review_status and review_notes",
+      "status": "ready",
+      "reason": "Admin users must be able to update the review status.",
+      "depends_on": []
+    },
+    {
+      "task": "Add filter controls once the complete filter set is confirmed",
+      "status": "blocked",
+      "reason": "The exact filter set is not fully confirmed yet.",
+      "depends_on": [
+        "complete filter set"
+      ]
+    }
+  ],
+  "required_database_considerations": [
+    {
+      "item": "Identify the source table or collection for feedback records",
+      "status": "blocked",
+      "reason": "The exact source table or collection is not provided yet.",
+      "depends_on": [
+        "source table or collection for feedback records"
+      ]
+    },
+    {
+      "item": "Confirm whether review_status, review_notes, reviewed_at, and reviewed_by already exist or need to be added",
+      "status": "blocked",
+      "reason": "The source table or collection is not confirmed yet.",
+      "depends_on": [
+        "source table or collection for feedback records"
+      ]
+    },
+    {
+      "item": "Consider indexing fields used by the confirmed filter set",
+      "status": "blocked",
+      "reason": "The exact filter set is not fully confirmed yet.",
+      "depends_on": [
+        "complete filter set"
+      ]
+    }
+  ],
+  "required_test_cases": [
+    {
+      "name": "Validate long feedback text display",
+      "status": "ready",
+      "given": "A feedback record has a long feedback_text value",
+      "expected": "The admin listing remains readable and the layout does not break.",
+      "depends_on": []
+    },
+    {
+      "name": "Validate full feedback inspection",
+      "status": "ready",
+      "given": "An admin user selects a feedback record",
+      "expected": "The full feedback_text content is available for review.",
+      "depends_on": []
+    },
+    {
+      "name": "Validate review status update",
+      "status": "ready",
+      "given": "An admin user updates review_status and review_notes",
+      "expected": "The updated moderation values are saved and returned correctly.",
+      "depends_on": []
+    },
+    {
+      "name": "Validate blocked filtering logic",
+      "status": "blocked",
+      "given": "The complete filter set is not confirmed",
+      "expected": "Filter implementation remains blocked until the required filters are provided.",
+      "depends_on": [
+        "complete filter set"
+      ]
+    },
+    {
+      "name": "Validate blocked data-source integration",
+      "status": "blocked",
+      "given": "The source table or collection is not confirmed",
+      "expected": "Data-source integration remains blocked until the source is provided.",
+      "depends_on": [
+        "source table or collection for feedback records"
+      ]
+    }
+  ],
+  "required_hallucination_checks": [
+    {
+      "check": "No source table or collection name is invented",
+      "result": "warning",
+      "notes": "The exact source table or collection is not provided, so any specific source name would be unsupported."
+    },
+    {
+      "check": "No frontend framework is invented",
+      "result": "warning",
+      "notes": "The context does not specify a frontend framework, so implementation should not assume one."
+    },
+    {
+      "check": "No database engine is invented",
+      "result": "warning",
+      "notes": "The context does not specify a database engine, so implementation should not assume one."
+    },
+    {
+      "check": "No fake sample values are used",
+      "result": "warning",
+      "notes": "Test cases should use symbolic input names instead of invented users, dates, or feedback values."
+    },
+    {
+      "check": "No unsupported authorization rule is invented",
+      "result": "warning",
+      "notes": "The exact admin authorization rule is not provided yet."
+    }
+  ]
+}
