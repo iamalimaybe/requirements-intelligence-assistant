@@ -1,6 +1,12 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Local/cache/model files
 *.gguf
@@ -10,9 +16,15 @@ __pycache__/
 *.pth
 *.onnx
 
-# Runtime/generated artifacts
+# Runtime/generated scratch artifacts
 logs/
 tmp/
+scratch/
+prompt-runs/
+
+# Local environment files
+.env
+.env.*
 
 # OS/editor
 .DS_Store

@@ -359,6 +359,30 @@ Python dependency:
 jsonschema>=4.0.0
 ```
 
+## Quick Sanity Check
+
+Run the current end-to-end workflow:
+
+```powershell
+python .\scripts\run_requirements_workflow.py `
+  --input .\model-outputs\v3-semantic-repaired-v2-qwen3-4b-output.json `
+  --context .\contexts\production-report-context.json `
+  --normalized-output .\model-outputs\workflow-normalized-output.json `
+  --enriched-output .\model-outputs\workflow-enriched-output.json
+```
+
+Then validate the enriched output directly:
+
+```powershell
+python .\scripts\validate_pipeline_v2.py .\model-outputs\workflow-enriched-output.json
+```
+
+Expected result:
+
+```text
+PIPELINE V2 RESULT: PASS
+```
+
 ## Portfolio Positioning
 
 This project demonstrates practical LLM engineering skills:
