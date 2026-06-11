@@ -435,6 +435,58 @@ python .\scripts\run_multi_context_regression_tests.py `
   .\scratch\review-moderation-enriched-output.json `
   .\contexts\review-moderation-context.json```
 
+## Reproducible Demo Workflow
+
+The demo workflow regenerates outputs for all included requirement contexts before running regression tests.
+
+This avoids relying on old files in `scratch/`.
+
+Run:
+
+```powershell
+python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
+```
+
+This command performs:
+
+```text
+Production Report context
+→ generate prompt
+→ call Ollama
+→ normalize
+→ enrich
+→ validate with pipeline v3
+
+Review Moderation context
+→ generate prompt
+→ call Ollama
+→ repair malformed JSON if needed
+→ normalize
+→ enrich
+→ validate with pipeline v3
+
+Both enriched outputs
+→ multi-context regression tests
+```
+
+Expected result:
+
+```text
+DEMO MULTI-CONTEXT WORKFLOW RESULT: PASS
+```
+
+The workflow includes a JSON repair fallback for malformed local model responses.
+
+This matters because small local models can return invalid JSON even when prompted strictly. The repair fallback keeps generation failure handling explicit while still requiring the final output to pass schema validation, semantic validation v3, and regression tests.
+
+Runtime files are written to:
+
+```text
+scratch/demo-multi-context/
+```
+
+These files are ignored by Git.
+
 ## Key Result
 
 The strongest workflow so far is:
@@ -487,9 +539,7 @@ Completed:
 Current main proof command:
 
 ```powershell
-python .\scripts\run_validation_v3_regression_tests.py `
-  .\scratch\context-only-enriched-output.json `
-  .\contexts\production-report-context.json
+python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
 ```
 
 ## Limitations
