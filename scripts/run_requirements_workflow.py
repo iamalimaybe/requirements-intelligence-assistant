@@ -1,18 +1,16 @@
 """
-Run the requirements-analysis workflow end to end.
+Run the requirements-analysis processing workflow.
 
 Purpose:
 - Normalize local LLM output into the expected schema shape.
 - Enrich normalized output using trusted requirement context.
-- Validate the enriched output using the stricter validation pipeline.
+- Stop before validation so validation can be handled by the caller.
 
 Workflow:
     model output
     -> normalize
     -> enrich with trusted context
-    -> schema validation
-    -> semantic validation v2
-    -> pass/fail result
+    -> processed output
 
 Usage:
     python scripts/run_requirements_workflow.py ^
@@ -34,7 +32,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 NORMALIZER = PROJECT_ROOT / "scripts" / "normalize_model_output.py"
 ENRICHER = PROJECT_ROOT / "scripts" / "enrich_model_output.py"
-PIPELINE_V2 = PROJECT_ROOT / "scripts" / "validate_pipeline_v2.py"
 
 
 def run_step(name: str, command: list[str]) -> int:
@@ -48,7 +45,7 @@ def run_step(name: str, command: list[str]) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run normalize -> enrich -> validate workflow for requirements-analysis model output."
+        description="Run normalize -> enrich workflow for requirements-analysis model output."
     )
 
     parser.add_argument(
@@ -127,21 +124,6 @@ def main() -> int:
         print("WORKFLOW RESULT: FAIL")
         print("Reason: Enrichment failed.")
         return enrich_result
-
-    validation_result = run_step(
-        "Validate enriched output with pipeline v2",
-        [
-            sys.executable,
-            str(PIPELINE_V2),
-            str(enriched_output_path),
-        ],
-    )
-
-    if validation_result != 0:
-        print()
-        print("WORKFLOW RESULT: FAIL")
-        print("Reason: Pipeline v2 validation failed.")
-        return validation_result
 
     print()
     print("WORKFLOW RESULT: PASS")

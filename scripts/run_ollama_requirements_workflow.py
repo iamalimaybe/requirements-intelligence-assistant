@@ -6,7 +6,7 @@ Purpose:
 - Generate requirements-analysis JSON from a local Ollama model.
 - Normalize predictable schema issues.
 - Enrich missing semantic content from trusted context.
-- Validate the final output using pipeline v2.
+- Validate the final enriched output using context-driven pipeline v3.
 
 Workflow:
     trusted context
@@ -15,7 +15,7 @@ Workflow:
     -> normalize
     -> enrich with trusted context
     -> schema validation
-    -> semantic validation v2
+    -> semantic validation v3
 
 Usage with explicit prompt:
     python scripts/run_ollama_requirements_workflow.py ^
@@ -49,6 +49,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROMPT_BUILDER = PROJECT_ROOT / "scripts" / "build_prompt_from_context.py"
 GENERATOR = PROJECT_ROOT / "scripts" / "generate_with_ollama.py"
 WORKFLOW = PROJECT_ROOT / "scripts" / "run_requirements_workflow.py"
+PIPELINE_V3 = PROJECT_ROOT / "scripts" / "validate_pipeline_v3.py"
 
 
 def resolve_project_path(path_value: str) -> Path:
@@ -183,7 +184,7 @@ def main() -> int:
         return generate_result
 
     workflow_result = run_step(
-        "Normalize, enrich, and validate generated output",
+        "Normalize and enrich generated output",
         [
             sys.executable,
             str(WORKFLOW),
@@ -201,8 +202,24 @@ def main() -> int:
     if workflow_result != 0:
         print()
         print("OLLAMA WORKFLOW RESULT: FAIL")
-        print("Reason: Normalize/enrich/validate workflow failed.")
+        print("Reason: Normalize/enrich workflow failed.")
         return workflow_result
+
+    pipeline_v3_result = run_step(
+        "Validate enriched output with pipeline v3",
+        [
+            sys.executable,
+            str(PIPELINE_V3),
+            str(enriched_output_path),
+            str(context_path),
+        ],
+    )
+
+    if pipeline_v3_result != 0:
+        print()
+        print("OLLAMA WORKFLOW RESULT: FAIL")
+        print("Reason: Pipeline v3 validation failed.")
+        return pipeline_v3_result
 
     print()
     print("OLLAMA WORKFLOW RESULT: PASS")
