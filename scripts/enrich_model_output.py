@@ -58,27 +58,79 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
         json.dump(data, file, indent=2, ensure_ascii=False)
         file.write("\n")
 
-
 def normalize_text(value: str) -> str:
-    return " ".join(value.lower().split())
+    normalized = value.lower()
+    normalized = normalized.replace("_", " ")
+    normalized = normalized.replace("-", " ")
+    normalized = normalized.replace(" and ", " ")
+    normalized = "".join(
+        character if character.isalnum() or character.isspace() else " "
+        for character in normalized
+    )
 
+    return " ".join(normalized.split())
+
+def strings_overlap(first: str, second: str) -> bool:
+    ignored_terms = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "for",
+        "from",
+        "is",
+        "of",
+        "or",
+        "the",
+        "to",
+        "what",
+        "which",
+        "with",
+    }
+
+    first_terms = {
+        term
+        for term in normalize_text(first).split()
+        if len(term) >= 4 and term not in ignored_terms
+    }
+
+    second_terms = {
+        term
+        for term in normalize_text(second).split()
+        if len(term) >= 4 and term not in ignored_terms
+    }
+
+    if not first_terms or not second_terms:
+        return False
+
+    overlap = first_terms.intersection(second_terms)
+
+    if len(first_terms) <= 3 or len(second_terms) <= 3:
+        return len(overlap) >= 2
+
+    return len(overlap) >= 3
 
 def merge_string_lists(existing: list[str], required: list[str]) -> list[str]:
     merged: list[str] = []
     seen: set[str] = set()
 
-    for value in [*existing, *required]:
+    for value in [*required, *existing]:
         if not isinstance(value, str) or not value.strip():
             continue
 
-        key = normalize_text(value)
+        cleaned_value = value.strip()
+        key = normalize_text(cleaned_value)
 
-        if key not in seen:
-            merged.append(value.strip())
-            seen.add(key)
+        if key in seen:
+            continue
+
+        if any(strings_overlap(cleaned_value, existing_value) for existing_value in merged):
+            continue
+
+        merged.append(cleaned_value)
+        seen.add(key)
 
     return merged
-
 
 def item_key(item: dict[str, Any], key_field: str) -> str:
     value = item.get(key_field)
@@ -155,6 +207,76 @@ def add_questions_for_uncovered_unknowns(
 
     return questions
 
+def text_terms(value: str) -> set[str]:
+    ignored_terms = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "into",
+        "using",
+        "used",
+        "admin",
+        "user",
+        "users",
+        "record",
+        "records",
+    }
+
+    return {
+        term.strip(".,:;()[]{}")
+        for term in normalize_text(value).split()
+        if len(term.strip(".,:;()[]{}")) >= 5
+        and term.strip(".,:;()[]{}") not in ignored_terms
+    }
+
+
+def object_text(item: dict[str, Any]) -> str:
+    values: list[str] = []
+
+    for value in item.values():
+        if isinstance(value, str):
+            values.append(value)
+        elif isinstance(value, list):
+            values.extend(str(child) for child in value)
+
+    return normalize_text(" ".join(values))
+
+
+def objects_overlap(first: dict[str, Any], second: dict[str, Any]) -> bool:
+    first_terms = text_terms(object_text(first))
+    second_terms = text_terms(object_text(second))
+
+    if not first_terms or not second_terms:
+        return False
+
+    overlap = first_terms.intersection(second_terms)
+
+    return len(overlap) >= 3
+
+
+def is_weak_generated_object(item: dict[str, Any]) -> bool:
+    status = item.get("status")
+    depends_on = item.get("depends_on")
+
+    if isinstance(status, str) and status == "blocked" and depends_on == []:
+        return True
+
+    text = object_text(item)
+
+    weak_phrases = [
+        "trusted context states",
+        "suggested anonymized fields",
+        "suggested review status values",
+        "feature scope matches requirements",
+        "fields are appropriate",
+        "status values are valid",
+    ]
+
+    return any(phrase in text for phrase in weak_phrases)
+
+
 def merge_objects(
     existing: list[dict[str, Any]],
     required: list[dict[str, Any]],
@@ -163,7 +285,7 @@ def merge_objects(
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    for item in [*existing, *required]:
+    for item in required:
         if not isinstance(item, dict):
             continue
 
@@ -175,6 +297,27 @@ def merge_objects(
         if key not in seen:
             merged.append(item)
             seen.add(key)
+
+    for item in existing:
+        if not isinstance(item, dict):
+            continue
+
+        key = item_key(item, key_field)
+
+        if not key:
+            continue
+
+        if key in seen:
+            continue
+
+        if is_weak_generated_object(item):
+            continue
+
+        if any(objects_overlap(item, required_item) for required_item in required):
+            continue
+
+        merged.append(item)
+        seen.add(key)
 
     return merged
 
@@ -243,10 +386,7 @@ def enrich_output(model_output: dict[str, Any], context: dict[str, Any]) -> dict
                 normalized_model_output.get("unknowns", []),
                 context.get("required_unknowns", []),
             ),
-            client_questions=merge_string_lists(
-                normalized_model_output.get("client_questions", []),
-                context.get("client_questions", []),
-            ),
+            client_questions=context.get("client_questions", []),
         ),
         "backend_tasks": merge_objects(
             normalized_model_output.get("backend_tasks", []),
@@ -269,7 +409,7 @@ def enrich_output(model_output: dict[str, Any], context: dict[str, Any]) -> dict
             "name",
         ),
         "hallucination_checks": merge_objects(
-            normalized_model_output.get("hallucination_checks", []),
+            [],
             required_hallucination_checks,
             "check",
         ),
