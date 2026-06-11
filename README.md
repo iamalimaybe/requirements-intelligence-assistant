@@ -345,6 +345,40 @@ python .\scripts\run_ollama_requirements_workflow.py `
 
 The committed `model-outputs/one-command-*.json` files are kept as reproducible demo evidence.
 
+## Context-Generated Prompts
+
+Requirement-specific facts are stored in trusted context JSON instead of being hardcoded directly into prompts.
+
+Generate a prompt from context:
+
+```powershell
+python .\scripts\build_prompt_from_context.py `
+  --context .\contexts\production-report-context.json `
+  --output .\scratch\generated-prompt.txt
+```
+
+Then run the local workflow using the generated prompt:
+
+```powershell
+python .\scripts\run_ollama_requirements_workflow.py `
+  --model qwen3:4b `
+  --prompt .\scratch\generated-prompt.txt `
+  --context .\contexts\production-report-context.json `
+  --generated-output .\scratch\context-generated-output.json `
+  --normalized-output .\scratch\context-normalized-output.json `
+  --enriched-output .\scratch\context-enriched-output.json
+```
+
+Expected result:
+
+```text
+OLLAMA WORKFLOW RESULT: PASS
+```
+
+This removes duplication between the prompt and the trusted context.
+
+The requirement context becomes the reusable source of truth, while the prompt can be generated consistently for different requirement files.
+
 ## Key Result
 
 The strongest workflow so far is:
