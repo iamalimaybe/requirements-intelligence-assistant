@@ -1,0 +1,80 @@
+{
+  "facts_used": [
+    "Production Report is the report name.",
+    "Frontend has a hierarchy agent endpoint.",
+    "Frontend passes hierarchyAgent to the backend.",
+    "Backend requires inputs: companyCode, hierarchyAgent, startDate, endDate.",
+    "DATE_ADDED field is used for date filtering in the Production Report."
+  ],
+  "unknowns": [],
+  "client_questions": [],
+  "backend_tasks": [
+    {
+      "task": "Define the input contract for the Production Report",
+      "status": "ready",
+      "reason": "Frontend passes companyCode, hierarchyAgent, startDate, and endDate",
+      "depends_on": []
+    },
+    {
+      "task": "Apply DATE_ADDED filtering to the data",
+      "status": "blocked",
+      "reason": "Source tables and the exact summation field are unknown",
+      "depends_on": [
+        "source tables for the report",
+        "exact field name for the metric to be summed"
+      ]
+    },
+    {
+      "task": "Sum the relevant fields to compute totals",
+      "status": "blocked",
+      "reason": "Source tables and the exact summation field are unknown",
+      "depends_on": [
+        "source tables for the report",
+        "exact field name for the metric to be summed"
+      ]
+    }
+  ],
+  "frontend_tasks": [
+    {
+      "task": "Pass selected hierarchyAgent and date range (startDate, endDate) to backend",
+      "status": "ready",
+      "reason": "Frontend has a hierarchy agent endpoint",
+      "depends_on": []
+    }
+  ],
+  "database_considerations": [
+    {
+      "item": "source tables for the report",
+      "status": "blocked",
+      "reason": "Model output did not provide a reason.",
+      "depends_on": [
+        "source tables for the report"
+      ]
+    },
+    {
+      "item": "exact field name for the metric to be summed",
+      "status": "blocked",
+      "reason": "Model output did not provide a reason.",
+      "depends_on": [
+        "exact field name for the metric to be summed"
+      ]
+    }
+  ],
+  "test_cases": [
+    {
+      "name": "Test valid inputs",
+      "status": "optional",
+      "given": "companyCode: 'example_company', hierarchyAgent: 'example_agent', startDate: '2023-01-01', endDate: '2023-12-31'",
+      "expected": "Report generated",
+      "depends_on": []
+    },
+    {
+      "name": "Test missing inputs",
+      "status": "optional",
+      "given": "companyCode: '', hierarchyAgent: '', startDate: '', endDate: ''",
+      "expected": "Error: Missing required inputs",
+      "depends_on": []
+    }
+  ],
+  "hallucination_checks": []
+}

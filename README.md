@@ -229,6 +229,51 @@ The trusted context provides:
 
 This prevents the model from being the only source of truth.
 
+## End-to-End CLI Workflow
+
+The project includes a CLI runner that executes the full workflow:
+
+```text
+model output → normalize → enrich → validate
+```
+
+Run:
+
+```powershell
+python .\scripts\run_requirements_workflow.py `
+  --input .\model-outputs\v3-semantic-repaired-v2-qwen3-4b-output.json `
+  --context .\contexts\production-report-context.json `
+  --normalized-output .\model-outputs\workflow-normalized-output.json `
+  --enriched-output .\model-outputs\workflow-enriched-output.json
+```
+
+Expected result:
+
+```text
+STEP: Normalize model output
+----------------------------
+Normalized output written to: ...
+
+STEP: Enrich normalized output
+------------------------------
+Enriched output written to: ...
+
+STEP: Validate enriched output with pipeline v2
+-----------------------------------------------
+STEP 1: Schema validation
+-------------------------
+PASS: Model output matches the schema.
+
+STEP 2: Semantic validation v2
+------------------------------
+PASS: Semantic validation v2 found no issues.
+PIPELINE V2 RESULT: PASS
+
+WORKFLOW RESULT: PASS
+```
+
+This command is the current main proof of the project workflow.
+
 ## Key Result
 
 The strongest workflow so far is:
