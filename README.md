@@ -379,6 +379,32 @@ This removes duplication between the prompt and the trusted context.
 
 The requirement context becomes the reusable source of truth, while the prompt can be generated consistently for different requirement files.
 
+## Context-Only Workflow
+
+The workflow can start directly from trusted context JSON.
+
+In this mode, the system builds the prompt automatically, calls Ollama, normalizes the output, enriches it from trusted context, and validates the final result.
+
+```powershell
+python .\scripts\run_ollama_requirements_workflow.py `
+  --model qwen3:4b `
+  --context .\contexts\production-report-context.json `
+  --generated-prompt-output .\scratch\context-only-generated-prompt.txt `
+  --generated-output .\scratch\context-only-generated-output.json `
+  --normalized-output .\scratch\context-only-normalized-output.json `
+  --enriched-output .\scratch\context-only-enriched-output.json
+```
+
+Expected result:
+
+```text
+OLLAMA WORKFLOW RESULT: PASS
+```
+
+This is the preferred local workflow because the requirement-specific information comes from the context file instead of a manually maintained prompt.
+
+Runtime files are written to `scratch/`, which is ignored by Git.
+
 ## Key Result
 
 The strongest workflow so far is:

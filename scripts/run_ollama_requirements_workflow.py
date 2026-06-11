@@ -2,20 +2,22 @@
 Run the full local Ollama requirements-analysis workflow.
 
 Purpose:
+- Optionally build a prompt from trusted context JSON.
 - Generate requirements-analysis JSON from a local Ollama model.
 - Normalize predictable schema issues.
 - Enrich missing semantic content from trusted context.
 - Validate the final output using pipeline v2.
 
 Workflow:
-    prompt file
+    trusted context
+    -> generated prompt
     -> Ollama model output
     -> normalize
     -> enrich with trusted context
     -> schema validation
     -> semantic validation v2
 
-Usage:
+Usage with explicit prompt:
     python scripts/run_ollama_requirements_workflow.py ^
       --model qwen3:4b ^
       --prompt prompts/requirements-analysis-generation-v1.txt ^
@@ -23,6 +25,15 @@ Usage:
       --generated-output model-outputs/one-command-generated-output.json ^
       --normalized-output model-outputs/one-command-normalized-output.json ^
       --enriched-output model-outputs/one-command-enriched-output.json
+
+Usage with context-generated prompt:
+    python scripts/run_ollama_requirements_workflow.py ^
+      --model qwen3:4b ^
+      --context contexts/production-report-context.json ^
+      --generated-prompt-output scratch/generated-prompt.txt ^
+      --generated-output scratch/context-generated-output.json ^
+      --normalized-output scratch/context-normalized-output.json ^
+      --enriched-output scratch/context-enriched-output.json
 """
 
 from __future__ import annotations
@@ -35,6 +46,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+PROMPT_BUILDER = PROJECT_ROOT / "scripts" / "build_prompt_from_context.py"
 GENERATOR = PROJECT_ROOT / "scripts" / "generate_with_ollama.py"
 WORKFLOW = PROJECT_ROOT / "scripts" / "run_requirements_workflow.py"
 
@@ -70,14 +82,23 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--prompt",
-        required=True,
-        help="Path to prompt text file.",
+        required=False,
+        help=(
+            "Optional path to prompt text file. "
+            "If omitted, the prompt is generated from --context."
+        ),
     )
 
     parser.add_argument(
         "--context",
         required=True,
         help="Path to trusted requirement context JSON.",
+    )
+
+    parser.add_argument(
+        "--generated-prompt-output",
+        default="scratch/generated-prompt.txt",
+        help="Path where generated prompt should be written when --prompt is omitted.",
     )
 
     parser.add_argument(
@@ -111,11 +132,33 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    prompt_path = resolve_project_path(args.prompt)
     context_path = resolve_project_path(args.context)
     generated_output_path = resolve_project_path(args.generated_output)
     normalized_output_path = resolve_project_path(args.normalized_output)
     enriched_output_path = resolve_project_path(args.enriched_output)
+
+    if args.prompt:
+        prompt_path = resolve_project_path(args.prompt)
+    else:
+        prompt_path = resolve_project_path(args.generated_prompt_output)
+
+        prompt_build_result = run_step(
+            "Build prompt from trusted context",
+            [
+                sys.executable,
+                str(PROMPT_BUILDER),
+                "--context",
+                str(context_path),
+                "--output",
+                str(prompt_path),
+            ],
+        )
+
+        if prompt_build_result != 0:
+            print()
+            print("OLLAMA WORKFLOW RESULT: FAIL")
+            print("Reason: Prompt generation failed.")
+            return prompt_build_result
 
     generate_result = run_step(
         "Generate output with Ollama",
@@ -163,6 +206,7 @@ def main() -> int:
 
     print()
     print("OLLAMA WORKFLOW RESULT: PASS")
+    print(f"Prompt used: {prompt_path}")
     print(f"Generated output: {generated_output_path}")
     print(f"Normalized output: {normalized_output_path}")
     print(f"Enriched output: {enriched_output_path}")
