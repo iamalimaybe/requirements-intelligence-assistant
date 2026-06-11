@@ -2,30 +2,16 @@
 
 A local LLM workflow for analyzing software requirements with validation-first output handling.
 
-This project is not a generic chatbot. It explores how to make local LLM output safer and more useful for production-style software engineering workflows by combining:
+This project is not a generic chatbot or prompt demo. It explores how to make local LLM output safer and more useful for production-style software engineering workflows by combining:
 
 * local LLM generation
-* prompt evaluation
-* JSON Schema validation
-* semantic validation
+* trusted context grounding
 * deterministic normalization
 * trusted-context enrichment
-* validation pipeline checks
-
-## Current Goal
-
-The current scope is a **Production Report requirements-analysis workflow**.
-
-The system takes weak or inconsistent local LLM output and improves it through a controlled pipeline:
-
-```text
-local LLM output
-→ deterministic normalization
-→ trusted-context enrichment
-→ schema validation
-→ semantic validation
-→ pass/fail decision
-```
+* JSON Schema validation
+* context-driven semantic validation
+* positive and negative regression checks
+* repeatable CLI workflows
 
 ## Why This Project Exists
 
@@ -36,13 +22,45 @@ Observed failure modes include:
 * invented table names
 * invented endpoint names
 * unsupported database assumptions
+* unsupported frontend assumptions
 * schema drift
 * missing required fields
 * fake sample values
 * empty but schema-valid sections
 * weak traceability to known facts
 
-This project treats model output as **untrusted** until it passes validation.
+This project treats model output as **untrusted** until it passes deterministic validation.
+
+The model is used as a draft generator. Code decides whether the output is acceptable.
+
+## Current Scope
+
+The current implemented workflow analyzes a **Production Report** requirement.
+
+The system produces structured engineering output such as:
+
+* facts used
+* unknowns
+* client questions
+* backend tasks
+* frontend tasks
+* database considerations
+* test cases
+* hallucination checks
+
+Current architecture:
+
+```text
+trusted context JSON
+→ generated prompt
+→ Ollama API
+→ raw model JSON
+→ normalize
+→ enrich from trusted context
+→ schema validation
+→ context-driven semantic validation v3
+→ PASS/FAIL
+```
 
 ## Model Used
 
@@ -63,6 +81,8 @@ RAM: 16GB
 OS: Windows 10
 ```
 
+This project intentionally uses a small local model to test practical local LLM workflows rather than relying only on hosted APIs.
+
 ## Project Structure
 
 ```text
@@ -70,396 +90,32 @@ requirements-intelligence-assistant/
 ├── contexts/
 │   └── production-report-context.json
 ├── evals/
-│   ├── baseline-qwen3-4b.md
-│   ├── controlled-prompt-qwen3-4b.md
-│   ├── controlled-prompt-v2-qwen3-4b.md
-│   ├── controlled-prompt-v3-qwen3-4b.md
-│   ├── v3-schema-validation-qwen3-4b.md
-│   ├── v3-repair-validation-qwen3-4b.md
-│   ├── v3-semantic-validation-qwen3-4b.md
-│   ├── v3-semantic-repair-attempt-1-qwen3-4b.md
-│   ├── v3-pipeline-validation-qwen3-4b.md
-│   ├── v3-semantic-repair-v2-attempt-1-qwen3-4b.md
-│   ├── v3-normalized-output-pipeline-v2-qwen3-4b.md
-│   └── v3-enriched-pipeline-v2-pass-qwen3-4b.md
+│   └── evaluation notes and model run summaries
 ├── model-outputs/
-│   ├── v3-qwen3-4b-output.json
-│   ├── v3-repaired-qwen3-4b-output.json
-│   ├── v3-semantic-repaired-qwen3-4b-output.json
-│   ├── v3-semantic-repaired-schema-fixed-qwen3-4b-output.json
-│   ├── v3-semantic-repaired-v2-qwen3-4b-output.json
-│   ├── v3-semantic-repaired-v2-normalized-qwen3-4b-output.json
-│   └── v3-enriched-qwen3-4b-output.json
+│   └── committed demo outputs from earlier workflow stages
 ├── prompts/
-│   ├── requirements-analysis-v3.md
-│   ├── requirements-analysis-repair-v1.md
-│   ├── requirements-analysis-semantic-repair-v1.md
-│   └── requirements-analysis-semantic-repair-v2.md
+│   └── prompt templates and earlier prompt experiments
 ├── schemas/
 │   └── requirements-analysis.schema.json
 ├── scripts/
-│   ├── validate_model_output.py
+│   ├── build_prompt_from_context.py
+│   ├── enrich_model_output.py
+│   ├── generate_with_ollama.py
+│   ├── normalize_model_output.py
+│   ├── run_ollama_requirements_workflow.py
+│   ├── run_requirements_workflow.py
+│   ├── run_validation_v3_negative_tests.py
+│   ├── run_validation_v3_regression_tests.py
 │   ├── semantic_validate_model_output.py
 │   ├── semantic_validate_model_output_v2.py
+│   ├── semantic_validate_model_output_v3.py
+│   ├── validate_model_output.py
 │   ├── validate_pipeline.py
 │   ├── validate_pipeline_v2.py
-│   ├── normalize_model_output.py
-│   └── enrich_model_output.py
+│   └── validate_pipeline_v3.py
 ├── requirements.txt
 └── README.md
 ```
-
-## Workflow
-
-### 1. Generate Local LLM Output
-
-The model first generates requirements-analysis JSON.
-
-Early results showed that even when the output looked professional, it could still contain unsupported assumptions or schema issues.
-
-### 2. Validate Against JSON Schema
-
-Schema validation checks whether the output has the expected structure.
-
-Run:
-
-```powershell
-python .\scripts\validate_model_output.py .\model-outputs\v3-qwen3-4b-output.json
-```
-
-Example failure:
-
-```text
-FAIL: Model output does not match the schema.
-```
-
-This step catches issues such as:
-
-* missing required keys
-* wrong field names
-* missing object fields
-* unexpected extra properties
-
-### 3. Run Semantic Validation
-
-Schema validation only proves that the JSON shape is correct. It does not prove the output is useful.
-
-Semantic validation checks quality rules such as:
-
-* facts are traceable
-* unknowns are captured
-* blocked tasks explain dependencies
-* test cases exist
-* hallucination checks exist
-* unsupported terms are avoided
-
-Run:
-
-```powershell
-python .\scripts\semantic_validate_model_output_v2.py .\model-outputs\v3-enriched-qwen3-4b-output.json
-```
-
-### 4. Run Full Pipeline
-
-The full pipeline enforces the correct validation order:
-
-```text
-schema validation → semantic validation
-```
-
-Run:
-
-```powershell
-python .\scripts\validate_pipeline_v2.py .\model-outputs\v3-enriched-qwen3-4b-output.json
-```
-
-Expected successful result:
-
-```text
-STEP 1: Schema validation
--------------------------
-PASS: Model output matches the schema.
-
-STEP 2: Semantic validation v2
-------------------------------
-PASS: Semantic validation v2 found no issues.
-PIPELINE V2 RESULT: PASS
-```
-
-## Normalization
-
-The normalizer fixes predictable structure problems in model output.
-
-Run:
-
-```powershell
-python .\scripts\normalize_model_output.py .\model-outputs\v3-semantic-repaired-v2-qwen3-4b-output.json .\model-outputs\v3-semantic-repaired-v2-normalized-qwen3-4b-output.json
-```
-
-The normalizer can fix issues such as:
-
-* missing top-level keys
-* `name` used instead of `task`
-* `name` used instead of `item`
-* missing required fields
-* extra fields not allowed by schema
-
-Normalization does not claim to fix meaning. It only makes structure safer.
-
-## Trusted-Context Enrichment
-
-The enrichment step fills missing semantic content using trusted project context.
-
-Run:
-
-```powershell
-python .\scripts\enrich_model_output.py .\model-outputs\v3-semantic-repaired-v2-normalized-qwen3-4b-output.json .\contexts\production-report-context.json .\model-outputs\v3-enriched-qwen3-4b-output.json
-```
-
-The trusted context provides:
-
-* known facts
-* required unknowns
-* client questions
-* required backend tasks
-* frontend tasks
-* database considerations
-* test cases
-* hallucination checks
-
-This prevents the model from being the only source of truth.
-
-## End-to-End CLI Workflow
-
-The project includes a CLI runner that executes the full workflow:
-
-```text
-model output → normalize → enrich → validate
-```
-
-Run:
-
-```powershell
-python .\scripts\run_requirements_workflow.py `
-  --input .\model-outputs\v3-semantic-repaired-v2-qwen3-4b-output.json `
-  --context .\contexts\production-report-context.json `
-  --normalized-output .\model-outputs\workflow-normalized-output.json `
-  --enriched-output .\model-outputs\workflow-enriched-output.json
-```
-
-Expected result:
-
-```text
-STEP: Normalize model output
-----------------------------
-Normalized output written to: ...
-
-STEP: Enrich normalized output
-------------------------------
-Enriched output written to: ...
-
-STEP: Validate enriched output with pipeline v2
------------------------------------------------
-STEP 1: Schema validation
--------------------------
-PASS: Model output matches the schema.
-
-STEP 2: Semantic validation v2
-------------------------------
-PASS: Semantic validation v2 found no issues.
-PIPELINE V2 RESULT: PASS
-
-WORKFLOW RESULT: PASS
-```
-
-This command is the current main proof of the project workflow.
-
-## Ollama API Generation
-
-The project can generate local model output directly through Ollama instead of manually copying responses from the UI.
-
-Generate raw model output:
-
-```powershell
-python .\scripts\generate_with_ollama.py `
-  --model qwen3:4b `
-  --prompt .\prompts\requirements-analysis-generation-v1.txt `
-  --output .\model-outputs\ollama-generated-qwen3-4b-output.json
-```
-
-Then run the full workflow:
-
-```powershell
-python .\scripts\run_requirements_workflow.py `
-  --input .\model-outputs\ollama-generated-qwen3-4b-output.json `
-  --context .\contexts\production-report-context.json `
-  --normalized-output .\model-outputs\ollama-generated-normalized-output.json `
-  --enriched-output .\model-outputs\ollama-generated-enriched-output.json
-```
-
-Expected final result:
-
-```text
-WORKFLOW RESULT: PASS
-```
-
-This proves the project can move from local model generation to validated output without manual prompt-copying.
-
-## One-Command Local LLM Workflow
-
-The full local workflow can be run with one command:
-
-```powershell
-python .\scripts\run_ollama_requirements_workflow.py `
-  --model qwen3:4b `
-  --prompt .\prompts\requirements-analysis-generation-v1.txt `
-  --context .\contexts\production-report-context.json `
-  --generated-output .\model-outputs\one-command-generated-output.json `
-  --normalized-output .\model-outputs\one-command-normalized-output.json `
-  --enriched-output .\model-outputs\one-command-enriched-output.json
-```
-
-This command performs:
-
-```text
-prompt → Ollama → raw JSON → normalize → enrich → validate
-```
-
-Expected final result:
-
-```text
-OLLAMA WORKFLOW RESULT: PASS
-```
-
-For repeated local experiments, use ignored scratch output paths:
-
-```powershell
-python .\scripts\run_ollama_requirements_workflow.py `
-  --model qwen3:4b `
-  --prompt .\prompts\requirements-analysis-generation-v1.txt `
-  --context .\contexts\production-report-context.json `
-  --generated-output .\scratch\generated-output.json `
-  --normalized-output .\scratch\normalized-output.json `
-  --enriched-output .\scratch\enriched-output.json
-```
-
-The committed `model-outputs/one-command-*.json` files are kept as reproducible demo evidence.
-
-## Context-Generated Prompts
-
-Requirement-specific facts are stored in trusted context JSON instead of being hardcoded directly into prompts.
-
-Generate a prompt from context:
-
-```powershell
-python .\scripts\build_prompt_from_context.py `
-  --context .\contexts\production-report-context.json `
-  --output .\scratch\generated-prompt.txt
-```
-
-Then run the local workflow using the generated prompt:
-
-```powershell
-python .\scripts\run_ollama_requirements_workflow.py `
-  --model qwen3:4b `
-  --prompt .\scratch\generated-prompt.txt `
-  --context .\contexts\production-report-context.json `
-  --generated-output .\scratch\context-generated-output.json `
-  --normalized-output .\scratch\context-normalized-output.json `
-  --enriched-output .\scratch\context-enriched-output.json
-```
-
-Expected result:
-
-```text
-OLLAMA WORKFLOW RESULT: PASS
-```
-
-This removes duplication between the prompt and the trusted context.
-
-The requirement context becomes the reusable source of truth, while the prompt can be generated consistently for different requirement files.
-
-## Context-Only Workflow
-
-The workflow can start directly from trusted context JSON.
-
-In this mode, the system builds the prompt automatically, calls Ollama, normalizes the output, enriches it from trusted context, and validates the final result.
-
-```powershell
-python .\scripts\run_ollama_requirements_workflow.py `
-  --model qwen3:4b `
-  --context .\contexts\production-report-context.json `
-  --generated-prompt-output .\scratch\context-only-generated-prompt.txt `
-  --generated-output .\scratch\context-only-generated-output.json `
-  --normalized-output .\scratch\context-only-normalized-output.json `
-  --enriched-output .\scratch\context-only-enriched-output.json
-```
-
-Expected result:
-
-```text
-OLLAMA WORKFLOW RESULT: PASS
-```
-
-This is the preferred local workflow because the requirement-specific information comes from the context file instead of a manually maintained prompt.
-
-Runtime files are written to `scratch/`, which is ignored by Git.
-
-## Key Result
-
-The strongest workflow so far is:
-
-```text
-weak model output
-→ normalize structure
-→ enrich from trusted context
-→ schema validation
-→ semantic validation v2
-→ PASS
-```
-
-This demonstrates a production-oriented approach:
-
-| Responsibility           | Owner              |
-| ------------------------ | ------------------ |
-| Drafting analysis        | LLM                |
-| Enforcing JSON structure | Code               |
-| Supplying known facts    | Trusted context    |
-| Checking required fields | JSON Schema        |
-| Checking usefulness      | Semantic validator |
-| Accept/reject decision   | Pipeline           |
-
-## Current Status
-
-Completed:
-
-* local Qwen3 4B baseline evaluation
-* controlled prompt experiments
-* schema validation
-* repair prompt experiments
-* semantic validation
-* validation pipeline
-* deterministic normalization
-* trusted-context enrichment
-* successful pipeline v2 pass
-
-Next planned step:
-
-```text
-Create a single CLI command that runs normalize → enrich → validate automatically.
-```
-
-## Limitations
-
-This project does not claim that a 4B local model can produce production-ready output by itself.
-
-The main finding is the opposite:
-
-```text
-Prompting alone is not enough.
-```
-
-Reliable workflows need validation, deterministic repair, and trusted context.
 
 ## Setup
 
@@ -476,7 +132,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-## Requirements
+Required runtime tools:
 
 ```text
 Python 3.10+
@@ -490,41 +146,386 @@ Python dependency:
 jsonschema>=4.0.0
 ```
 
-## Quick Sanity Check
+## Trusted Context
 
-Run the current end-to-end workflow:
+Requirement-specific facts are stored in trusted context JSON.
 
-```powershell
-python .\scripts\run_requirements_workflow.py `
-  --input .\model-outputs\v3-semantic-repaired-v2-qwen3-4b-output.json `
-  --context .\contexts\production-report-context.json `
-  --normalized-output .\model-outputs\workflow-normalized-output.json `
-  --enriched-output .\model-outputs\workflow-enriched-output.json
+Current context file:
+
+```text
+contexts/production-report-context.json
 ```
 
-Then validate the enriched output directly:
+The trusted context is the semantic source of truth for:
+
+* known facts
+* required unknowns
+* client questions
+* backend tasks
+* frontend tasks
+* database considerations
+* test cases
+* hallucination checks
+
+This prevents the model from being the only source of truth.
+
+## Prompt Generation From Context
+
+The prompt can be generated from the trusted context instead of being manually maintained.
+
+Run:
 
 ```powershell
-python .\scripts\validate_pipeline_v2.py .\model-outputs\workflow-enriched-output.json
+python .\scripts\build_prompt_from_context.py `
+  --context .\contexts\production-report-context.json `
+  --output .\scratch\generated-prompt.txt
+```
+
+This keeps requirement-specific information in the context file and reduces duplication between prompt text and validation rules.
+
+## One-Command Local LLM Workflow
+
+The preferred workflow starts from trusted context JSON.
+
+Run:
+
+```powershell
+python .\scripts\run_ollama_requirements_workflow.py `
+  --model qwen3:4b `
+  --context .\contexts\production-report-context.json `
+  --generated-prompt-output .\scratch\context-only-generated-prompt.txt `
+  --generated-output .\scratch\context-only-generated-output.json `
+  --normalized-output .\scratch\context-only-normalized-output.json `
+  --enriched-output .\scratch\context-only-enriched-output.json
+```
+
+This command performs:
+
+```text
+trusted context
+→ generated prompt
+→ Ollama model output
+→ normalize
+→ enrich
+→ validate with pipeline v3
 ```
 
 Expected result:
 
 ```text
-PIPELINE V2 RESULT: PASS
+OLLAMA WORKFLOW RESULT: PASS
 ```
+
+Runtime files are written to `scratch/`, which is ignored by Git.
+
+## Processing Workflow
+
+The processing workflow handles deterministic post-processing only:
+
+```text
+model output
+→ normalize
+→ enrich with trusted context
+→ processed output
+```
+
+Run:
+
+```powershell
+python .\scripts\run_requirements_workflow.py `
+  --input .\scratch\context-only-generated-output.json `
+  --context .\contexts\production-report-context.json `
+  --normalized-output .\scratch\context-only-normalized-output.json `
+  --enriched-output .\scratch\context-only-enriched-output.json
+```
+
+Expected result:
+
+```text
+WORKFLOW RESULT: PASS
+```
+
+This script intentionally stops before validation. Final validation is handled by `validate_pipeline_v3.py` or by the full Ollama workflow.
+
+## Schema Validation
+
+Schema validation checks whether the output has the expected JSON structure.
+
+Run:
+
+```powershell
+python .\scripts\validate_model_output.py .\scratch\context-only-enriched-output.json
+```
+
+This catches issues such as:
+
+* missing required keys
+* wrong field names
+* missing object fields
+* unexpected extra properties
+* invalid JSON shape
+
+Schema validation does not prove that the output is semantically correct. It only proves that the structure matches the schema.
+
+## Context-Driven Semantic Validation v3
+
+Semantic validation v3 checks the model output against the supplied context JSON.
+
+Run:
+
+```powershell
+python .\scripts\semantic_validate_model_output_v3.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json
+```
+
+It validates that the output covers required context items, including:
+
+* facts used
+* unknowns
+* client questions
+* backend tasks
+* frontend tasks
+* database considerations
+* test cases
+* hallucination checks
+
+It also rejects risky unsupported content, including:
+
+* invented database engines
+* invented frontend frameworks
+* fake sample values
+* unsupported implementation estimates
+* invalid task statuses
+* blocked items without `depends_on`
+* invalid hallucination check result values
+
+Allowed task status values:
+
+```text
+ready
+blocked
+optional
+```
+
+Allowed hallucination check result values:
+
+```text
+pass
+fail
+warning
+blocked
+```
+
+## Validation Pipeline v3
+
+Pipeline v3 enforces the correct validation order:
+
+```text
+schema validation
+→ semantic validation v3
+```
+
+Run:
+
+```powershell
+python .\scripts\validate_pipeline_v3.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json
+```
+
+Expected result:
+
+```text
+Running schema validation...
+PASS: Model output matches the schema.
+Running semantic validation v3...
+SEMANTIC VALIDATION V3 RESULT: PASS
+PIPELINE V3 RESULT: PASS
+```
+
+## Negative Validation Tests
+
+The negative test runner creates controlled bad outputs from a known-good enriched output.
+
+Run:
+
+```powershell
+python .\scripts\run_validation_v3_negative_tests.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json
+```
+
+It verifies that the validator rejects:
+
+* missing required facts
+* invalid status values
+* blocked items without `depends_on`
+* invalid hallucination check result values
+* invented database engines
+* invented frontend frameworks
+* unsupported implementation estimates
+* fake sample values
+
+Expected result:
+
+```text
+NEGATIVE TEST RESULT: PASS
+```
+
+This proves the validator is not only passing the happy path. It also rejects known bad outputs.
+
+## Regression Test Runner
+
+The regression runner combines positive and negative validation checks into one command.
+
+Run:
+
+```powershell
+python .\scripts\run_validation_v3_regression_tests.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json
+```
+
+Expected result:
+
+```text
+STEP: Positive validation test
+------------------------------
+Running schema validation...
+PASS: Model output matches the schema.
+Running semantic validation v3...
+SEMANTIC VALIDATION V3 RESULT: PASS
+PIPELINE V3 RESULT: PASS
+
+STEP: Negative validation tests
+-------------------------------
+[PASS] missing-required-fact: rejected as expected.
+[PASS] invalid-status: rejected as expected.
+[PASS] blocked-without-depends-on: rejected as expected.
+[PASS] invalid-hallucination-result: rejected as expected.
+[PASS] invented-db-engine: rejected as expected.
+[PASS] invented-frontend-framework: rejected as expected.
+[PASS] unsupported-implementation-estimate: rejected as expected.
+[PASS] fake-sample-value: rejected as expected.
+NEGATIVE TEST RESULT: PASS
+
+REGRESSION TEST RESULT: PASS
+```
+
+This is the strongest current proof command for the project.
+
+It demonstrates:
+
+```text
+known-good output passes
+known-bad outputs fail
+```
+
+## Key Result
+
+The strongest workflow so far is:
+
+```text
+trusted context
+→ prompt generation
+→ local LLM generation
+→ deterministic normalization
+→ trusted-context enrichment
+→ schema validation
+→ context-driven semantic validation v3
+→ positive and negative regression proof
+```
+
+This demonstrates a production-oriented approach:
+
+| Responsibility                          | Owner                             |
+| --------------------------------------- | --------------------------------- |
+| Drafting analysis                       | Local LLM                         |
+| Supplying known facts                   | Trusted context                   |
+| Building prompts                        | Deterministic prompt builder      |
+| Fixing predictable structure issues     | Normalizer                        |
+| Filling required context-backed content | Enricher                          |
+| Enforcing JSON structure                | JSON Schema                       |
+| Checking semantic groundedness          | Semantic validator v3             |
+| Accept/reject decision                  | Validation pipeline               |
+| Regression proof                        | Positive and negative test runner |
+
+## Current Status
+
+Completed:
+
+* local Qwen3 4B baseline evaluation
+* controlled prompt experiments
+* JSON Schema validation
+* repair prompt experiments
+* semantic validation v1 and v2
+* validation pipeline v1 and v2
+* deterministic normalization
+* trusted-context enrichment
+* Ollama API generation
+* one-command local Ollama workflow
+* context-generated prompt workflow
+* context-only workflow
+* context-driven semantic validation v3
+* negative validation tests
+* regression test runner
+
+Current main proof command:
+
+```powershell
+python .\scripts\run_validation_v3_regression_tests.py `
+  .\scratch\context-only-enriched-output.json `
+  .\contexts\production-report-context.json
+```
+
+## Limitations
+
+This project does not claim that a 4B local model can produce production-ready output by itself.
+
+The main finding is the opposite:
+
+```text
+Prompting alone is not enough.
+```
+
+Current limitations:
+
+* only one requirement context has been implemented so far
+* semantic validation uses deterministic heuristics, not full human understanding
+* the validator can catch defined hallucination patterns, not every possible bad answer
+* no UI or API layer yet
+* no retrieval-augmented generation yet
+* no CI workflow yet
+* no multi-model comparison dashboard yet
+
+## Next Planned Steps
+
+Recommended next steps:
+
+1. Add a second or third requirement context to prove the workflow is reusable.
+2. Add a proper run/evaluation report system so multiple model runs can be compared.
+3. Add a lightweight API or UI around the workflow.
+4. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
+5. Add CI regression checks once the script interface stabilizes.
 
 ## Portfolio Positioning
 
 This project demonstrates practical LLM engineering skills:
 
-* local model evaluation
+* local model usage
 * prompt testing
 * schema-first design
 * validation-first output handling
 * deterministic normalization
-* semantic validation
-* trusted-context enrichment
-* production-style rejection/acceptance pipeline
+* trusted-context grounding
+* context-driven semantic validation
+* hallucination rejection
+* positive and negative regression testing
+* production-style accept/reject workflows
 
-It is intentionally scoped and measurable instead of being a generic AI chatbot.
+The positioning is:
+
+```text
+I can build practical LLM workflows that are grounded, validated, testable, and production-aware — not just call an LLM API and hope the answer is good.
+```
