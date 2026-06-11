@@ -2,7 +2,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 
 ALLOWED_STATUS_VALUES = {"ready", "blocked", "optional"}
@@ -525,24 +525,101 @@ def contains_term(text: str, term: str) -> bool:
     return re.search(pattern, text.lower()) is not None
 
 
-def is_guarded_mention(text: str, start_index: int) -> bool:
-    before = text[max(0, start_index - 80):start_index].lower()
+def extract_sentence_window(text: str, start_index: int, end_index: int) -> Tuple[str, int, int]:
+    sentence_boundaries = ".!?\n;"
+    left_boundary = -1
 
-    guarded_markers = [
-        "avoid",
-        "do not",
-        "don't",
-        "fake",
-        "hallucinated",
-        "invented",
-        "no ",
-        "not ",
-        "should not",
-        "unsupported",
-        "without",
+    for boundary in sentence_boundaries:
+        position = text.rfind(boundary, 0, start_index)
+
+        if position > left_boundary:
+            left_boundary = position
+
+    left = 0 if left_boundary == -1 else left_boundary + 1
+    right_candidates = []
+
+    for boundary in sentence_boundaries:
+        position = text.find(boundary, end_index)
+
+        if position != -1:
+            right_candidates.append(position)
+
+    right = min(right_candidates) if right_candidates else len(text)
+
+    return text[left:right], start_index - left, end_index - left
+
+
+def is_guarded_mention(text: str, start_index: int, end_index: Optional[int] = None) -> bool:
+    if end_index is None:
+        end_index = start_index
+
+        while end_index < len(text):
+            current = text[end_index]
+
+            if current.isspace() or current in ",:()[]{}<>\"'":
+                break
+
+            end_index += 1
+
+    sentence, relative_start, relative_end = extract_sentence_window(
+        text,
+        start_index,
+        end_index,
+    )
+
+    sentence = sentence.lower()
+    term_text = sentence[relative_start:relative_end].strip()
+
+    if not term_text:
+        return False
+
+    term_pattern = re.escape(term_text)
+
+    direct_guard_patterns = [
+        rf"\b(?:do not|don't|should not|must not|cannot|can't|never|not)\s+"
+        rf"(?:assume|use|implement|select|choose|invent|add|introduce)\b.{{0,80}}{term_pattern}",
+        rf"{term_pattern}.{{0,80}}\b(?:should not|must not|cannot|can't|not)\s+"
+        rf"(?:be\s+)?(?:assumed|used|implemented|selected|chosen|introduced|added)\b",
+        rf"{term_pattern}.{{0,80}}\b"
+        rf"(?:is|are|was|were)?\s*"
+        rf"(?:not supported|unsupported|not confirmed|unconfirmed|not in context|"
+        rf"not present in context|not provided by context|invented|hallucinated|fake)\b",
+        rf"\b(?:unsupported|unconfirmed|invented|hallucinated|fake)\b.{{0,80}}{term_pattern}",
+        rf"{term_pattern}.{{0,80}}\b(?:unless|until)\s+(?:the\s+)?context\b",
+        rf"\bwithout\s+(?:trusted\s+)?context\b.{{0,80}}{term_pattern}",
     ]
 
-    return any(marker in before for marker in guarded_markers)
+    for pattern in direct_guard_patterns:
+        if re.search(pattern, sentence):
+            return True
+
+    assertive_usage_patterns = [
+        rf"\b(?:use|uses|using|build|builds|built|implement|implements|implemented|"
+        rf"configure|configures|configured|migrate|migrates|migrated|store|stores|stored|"
+        rf"deploy|deploys|deployed|select|selects|selected|choose|chooses|chosen|"
+        rf"connect|connects|connected|join|joins|joined|query|queries|queried)\b.{{0,60}}{term_pattern}",
+        rf"{term_pattern}.{{0,60}}\b(?:will|should|must|can|could|is|are)\s+"
+        rf"(?:be\s+)?(?:used|implemented|configured|selected|chosen|deployed|connected|queried)\b",
+    ]
+
+    for pattern in assertive_usage_patterns:
+        if re.search(pattern, sentence):
+            return False
+
+    broad_guard_markers = [
+        "unsupported",
+        "unconfirmed",
+        "not confirmed",
+        "not in context",
+        "not present in context",
+        "not provided by context",
+        "without context",
+        "invented",
+        "hallucinated",
+        "fake",
+    ]
+
+    return any(marker in sentence for marker in broad_guard_markers)
 
 
 def find_term_occurrences(text: str, term: str) -> Iterable[Tuple[int, int]]:
@@ -569,7 +646,7 @@ def validate_unsupported_term_groups(
 
         for term in group:
             for start, _ in find_term_occurrences(output_text, term):
-                if is_guarded_mention(output_text, start):
+                if is_guarded_mention(output_text, start, end):
                     continue
 
                 errors.append(
@@ -595,7 +672,7 @@ def validate_implementation_estimates(output_text: str, context_text: str) -> Li
             if contains_term(context_text, phrase):
                 continue
 
-            if is_guarded_mention(output_text, match.start()):
+            if is_guarded_mention(output_text, match.start(), match.end()):
                 continue
 
             errors.append(
