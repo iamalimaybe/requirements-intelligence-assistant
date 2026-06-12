@@ -6,6 +6,7 @@ This project is not a generic chatbot or prompt demo. It explores how to make lo
 
 * local LLM generation
 * trusted context grounding
+* trusted context schema validation
 * deterministic normalization
 * trusted-context enrichment
 * JSON Schema validation
@@ -16,6 +17,7 @@ This project is not a generic chatbot or prompt demo. It explores how to make lo
 * structured run reporting
 * run-report schema validation
 * repeatable CLI workflows
+* local model comparison
 
 ## Why This Project Exists
 
@@ -40,14 +42,21 @@ The model is used as a draft generator. Code decides whether the output is accep
 
 ## Current Scope
 
-The project currently includes two requirement contexts:
+The project currently includes three requirement contexts:
 
 ```text
+contexts/payment-webhook-context.json
 contexts/production-report-context.json
 contexts/review-moderation-context.json
 ```
 
-The first context is report-oriented. The second context is admin workflow/UI-oriented.
+The contexts cover different requirement types:
+
+```text
+payment-webhook: external API/webhook integration
+production-report: report-oriented backend workflow
+review-moderation: admin workflow/UI-oriented requirement
+```
 
 This helps prove that the validation workflow is not tied to one hardcoded requirement.
 
@@ -57,7 +66,7 @@ The demo workflow automatically discovers all files matching:
 contexts/*-context.json
 ```
 
-So adding another context later does not require changing the demo script.
+So adding another context does not require changing the demo script.
 
 The system produces structured engineering output such as:
 
@@ -74,6 +83,7 @@ Current architecture:
 
 ```text
 trusted context JSON
+→ trusted context schema validation
 → generated prompt
 → Ollama API
 → raw model JSON
@@ -83,6 +93,7 @@ trusted context JSON
 → schema validation
 → context-driven semantic validation v3
 → positive/negative regression tests
+→ multi-context regression tests
 → structured run report
 → run-report schema validation
 → PASS/FAIL
@@ -90,13 +101,21 @@ trusted context JSON
 
 ## Model Used
 
-Initial experiments use:
+The main development baseline is:
 
 ```text
 qwen3:4b
 ```
 
 Running locally through Ollama on Windows 10.
+
+A larger same-family comparison model has also been tested:
+
+```text
+qwen3:8b
+```
+
+Repeated model-comparison runs showed that `qwen3:8b` produced cleaner JSON with fewer repairs, while `qwen3:4b` remains useful as a fast iteration model.
 
 Test hardware:
 
@@ -107,13 +126,14 @@ RAM: 16GB
 OS: Windows 10
 ```
 
-This project intentionally uses a small local model to test practical local LLM workflows rather than relying only on hosted APIs.
+This project intentionally uses local models to test practical local LLM workflows rather than relying only on hosted APIs.
 
 ## Project Structure
 
 ```text
 requirements-intelligence-assistant/
 ├── contexts/
+│   ├── payment-webhook-context.json
 │   ├── production-report-context.json
 │   └── review-moderation-context.json
 ├── evals/
@@ -124,6 +144,7 @@ requirements-intelligence-assistant/
 │   └── prompt templates and earlier prompt experiments
 ├── schemas/
 │   ├── requirements-analysis.schema.json
+│   ├── requirements-context.schema.json
 │   └── run-report.schema.json
 ├── scripts/
 │   ├── build_prompt_from_context.py
@@ -131,6 +152,7 @@ requirements-intelligence-assistant/
 │   ├── generate_with_ollama.py
 │   ├── normalize_model_output.py
 │   ├── run_demo_multi_context_workflow.py
+│   ├── run_model_comparison.py
 │   ├── run_multi_context_regression_tests.py
 │   ├── run_ollama_requirements_workflow.py
 │   ├── run_requirements_workflow.py
@@ -139,6 +161,7 @@ requirements-intelligence-assistant/
 │   ├── semantic_validate_model_output.py
 │   ├── semantic_validate_model_output_v2.py
 │   ├── semantic_validate_model_output_v3.py
+│   ├── validate_context.py
 │   ├── validate_model_output.py
 │   ├── validate_pipeline.py
 │   ├── validate_pipeline_v2.py
@@ -171,6 +194,12 @@ Ollama
 qwen3:4b
 ```
 
+Optional comparison model:
+
+```text
+qwen3:8b
+```
+
 Python dependency:
 
 ```text
@@ -184,12 +213,15 @@ Requirement-specific facts are stored in trusted context JSON.
 Current context files:
 
 ```text
+contexts/payment-webhook-context.json
 contexts/production-report-context.json
 contexts/review-moderation-context.json
 ```
 
 The trusted context is the semantic source of truth for:
 
+* requirement name
+* summary
 * known facts
 * required unknowns
 * client questions
@@ -198,6 +230,27 @@ The trusted context is the semantic source of truth for:
 * database considerations
 * test cases
 * hallucination checks
+
+Trusted context files are validated against:
+
+```text
+schemas/requirements-context.schema.json
+```
+
+Manual validation command:
+
+```powershell
+python .\scripts\validate_context.py `
+  .\contexts\payment-webhook-context.json `
+  .\contexts\production-report-context.json `
+  .\contexts\review-moderation-context.json
+```
+
+Expected result:
+
+```text
+PASS: 3 trusted context file(s) match the schema.
+```
 
 This prevents the model from being the only source of truth.
 
@@ -427,7 +480,9 @@ Run:
 
 ```powershell
 python .\scripts\run_multi_context_regression_tests.py `
-  .\scratch\context-only-enriched-output.json `
+  .\scratch\payment-webhook-enriched-output.json `
+  .\contexts\payment-webhook-context.json `
+  .\scratch\production-report-enriched-output.json `
   .\contexts\production-report-context.json `
   .\scratch\review-moderation-enriched-output.json `
   .\contexts\review-moderation-context.json
@@ -463,6 +518,7 @@ This command performs:
 
 ```text
 all contexts matching contexts/*-context.json
+→ validate trusted context files
 → generate prompt
 → call Ollama
 → repair malformed JSON if needed
@@ -506,6 +562,7 @@ The report records:
 
 * model name
 * temperature
+* trusted context validation result
 * context discovery mode
 * context count
 * output directory
@@ -520,6 +577,7 @@ The report records:
 * per-step duration
 * return codes
 * multi-context regression result
+* run-report validation result
 * final workflow result
 
 This makes the demo easier to inspect and helps prepare for future model comparisons.
@@ -553,6 +611,7 @@ Run with the current local model:
 ```powershell
 python .\scripts\run_model_comparison.py --model qwen3:4b
 ```
+
 The runner writes:
 
 ```text
@@ -577,11 +636,27 @@ Example multi-model usage:
 ```powershell
 python .\scripts\run_model_comparison.py `
   --model qwen3:4b `
-  --model llama3.1:8b `
-  --model mistral:7b
+  --model qwen3:8b
 ```
 
 Runtime files are written to `scratch/`, which is ignored by Git.
+
+## Evaluation Evidence
+
+The project includes eval notes that document the validation and model-comparison milestones.
+
+Key evaluation areas include:
+
+* local Qwen3 4B baseline behavior
+* context-driven semantic validation v3
+* negative validation tests
+* multi-context regression
+* reproducible demo workflow
+* run-report validation
+* trusted context schema validation
+* qwen3:4b vs qwen3:8b model comparison
+
+These eval notes help show how the workflow evolved from prompt experiments into a repeatable validation-first system.
 
 ## Key Result
 
@@ -589,6 +664,7 @@ The strongest workflow so far is:
 
 ```text
 trusted context
+→ trusted context schema validation
 → prompt generation
 → local LLM generation
 → malformed JSON repair fallback
@@ -608,6 +684,7 @@ This demonstrates a production-oriented approach:
 | --------------------------------------- | ---------------------------------- |
 | Drafting analysis                       | Local LLM                          |
 | Supplying known facts                   | Trusted context                    |
+| Validating trusted context files        | Trusted context schema validator   |
 | Building prompts                        | Deterministic prompt builder       |
 | Handling malformed JSON                 | JSON repair fallback               |
 | Fixing predictable structure issues     | Normalizer                         |
@@ -636,27 +713,32 @@ Completed:
 * one-command local Ollama workflow
 * context-generated prompt workflow
 * context-only workflow
+* trusted context schema validation
 * context-driven semantic validation v3
 * negative validation tests
 * regression test runner
-* second requirement context
+* third requirement context
 * multi-context regression runner
 * reproducible multi-context demo workflow
 * malformed JSON repair fallback
 * structured run report
 * run report schema validation
+* local model comparison runner
+* qwen3:4b vs qwen3:8b comparison evaluation
 
 Current main proof command:
 
 ```powershell
 python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
 ```
+
 ## Local CI-Style Proof Command
 
 The main local proof command is:
 
 ```powershell
 python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
+```
 
 This command acts as a local CI-style check for the project.
 
@@ -668,11 +750,10 @@ It validates:
 * negative regression cases
 * multi-context regression
 * run-report.json
-```
 
 ## Limitations
 
-This project does not claim that a 4B local model can produce production-ready output by itself.
+This project does not claim that a small local model can produce production-ready output by itself.
 
 The main finding is the opposite:
 
@@ -682,25 +763,25 @@ Prompting alone is not enough.
 
 Current limitations:
 
-* only two requirement contexts have been implemented so far
-* both contexts are still hand-written structured JSON files
+* only three requirement contexts have been implemented so far
+* contexts are still hand-written structured JSON files
 * semantic validation uses deterministic heuristics, not full human understanding
 * the validator can catch defined hallucination patterns, not every possible bad answer
 * JSON repair only handles malformed model output, not semantic correctness
 * no UI or API layer yet
 * no retrieval-augmented generation yet
-* no CI workflow yet
-* no multi-model comparison dashboard yet
+* no GitHub Actions CI workflow yet
+* no model comparison dashboard yet
 
 ## Next Planned Steps
 
 Recommended next steps:
 
-1. Add a third requirement context or start deriving trusted context from less structured input.
-2. Add CI regression checks once the script interface stabilizes.
-3. Add model-run comparison using structured run reports.
-4. Add a lightweight API or UI around the workflow.
-5. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
+1. Add GitHub Actions CI for schema validation and deterministic regression tests.
+2. Start deriving trusted context from less structured requirement input.
+3. Add a lightweight API or UI around the workflow.
+4. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
+5. Add a small model comparison dashboard or summary view if more models are tested.
 
 ## Portfolio Positioning
 
@@ -712,6 +793,7 @@ This project demonstrates practical LLM engineering skills:
 * validation-first output handling
 * deterministic normalization
 * trusted-context grounding
+* trusted context schema validation
 * malformed JSON repair
 * context-driven semantic validation
 * hallucination rejection
@@ -719,6 +801,7 @@ This project demonstrates practical LLM engineering skills:
 * multi-context validation
 * structured run reporting
 * run-report validation
+* local model comparison
 * production-style accept/reject workflows
 
 The positioning is:
