@@ -3,6 +3,7 @@
   "title": "Demo Workflow Run Report",
   "type": "object",
   "required": [
+    "context_validation",
     "workflow",
     "model",
     "temperature",
@@ -88,6 +89,26 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/context_result"
+      }
+    },
+    "context_validation": {
+      "type": "object",
+      "required": [
+        "result",
+        "step"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "step": {
+          "$ref": "#/$defs/step_result"
+        }
       }
     },
     "multi_context_regression": {

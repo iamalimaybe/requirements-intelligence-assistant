@@ -1,6 +1,8 @@
 {
   "context_id": "production-report",
   "title": "Production Report Requirement Context",
+  "requirement_name": "Production Report",
+  "summary": "Generate a production report for a selected hierarchy agent and date range using DATE_ADDED filtering and period-based summation.",
   "known_facts": [
     "Report name: Production Report.",
     "Frontend already has a hierarchy agent endpoint.",

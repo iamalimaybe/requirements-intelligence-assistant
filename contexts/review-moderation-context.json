@@ -1,6 +1,8 @@
 {
   "context_id": "review-moderation-dashboard",
   "title": "Review Moderation Dashboard Requirement Context",
+  "requirement_name": "Review Moderation Dashboard",
+  "summary": "Provide an internal admin workflow for reviewing user-submitted feedback records, inspecting long feedback text, filtering records, and updating review status.",
   "known_facts": [
     "Feature name: Review Moderation Dashboard.",
     "The feature is for internal admin users.",

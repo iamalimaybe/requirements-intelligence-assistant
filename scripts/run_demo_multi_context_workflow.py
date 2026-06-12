@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OLLAMA_WORKFLOW = PROJECT_ROOT / "scripts" / "run_ollama_requirements_workflow.py"
 MULTI_CONTEXT_REGRESSION = PROJECT_ROOT / "scripts" / "run_multi_context_regression_tests.py"
 RUN_REPORT_VALIDATOR = PROJECT_ROOT / "scripts" / "validate_run_report.py"
+CONTEXT_VALIDATOR = PROJECT_ROOT / "scripts" / "validate_context.py"
 
 
 def now_utc() -> str:
@@ -161,6 +162,7 @@ def validate_required_files(cases: list[dict[str, Path | str]]) -> List[str]:
         OLLAMA_WORKFLOW,
         MULTI_CONTEXT_REGRESSION,
         RUN_REPORT_VALIDATOR,
+        CONTEXT_VALIDATOR,
         *[case["context"] for case in cases],
     ]
 
@@ -171,6 +173,28 @@ def validate_required_files(cases: list[dict[str, Path | str]]) -> List[str]:
             missing_files.append(str(path))
 
     return missing_files
+
+
+def validate_context_files(cases: list[dict[str, Path | str]]) -> tuple[int, dict[str, Any]]:
+    command = [
+        sys.executable,
+        str(CONTEXT_VALIDATOR),
+    ]
+
+    for case in cases:
+        command.append(str(case["context"]))
+
+    result, step_report = run_step(
+        "Validate trusted context files",
+        command,
+    )
+
+    context_validation_report = {
+        "result": "pass" if result == 0 else "fail",
+        "step": step_report,
+    }
+
+    return result, context_validation_report
 
 
 def run_context_workflow(
@@ -295,6 +319,7 @@ def main() -> int:
         "ended_at": None,
         "duration_seconds": None,
         "result": "fail",
+        "context_validation": None,
         "contexts": [],
         "multi_context_regression": None,
         "run_report_validation": None,
@@ -332,6 +357,22 @@ def main() -> int:
         return 1
 
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    context_validation_result, context_validation_report = validate_context_files(cases)
+    report["context_validation"] = context_validation_report
+    write_json(report_path, report)
+
+    if context_validation_result != 0:
+        report["ended_at"] = now_utc()
+        report["duration_seconds"] = round(time.perf_counter() - started_time, 3)
+        report["result"] = "fail"
+        write_json(report_path, report)
+
+        print()
+        print("DEMO MULTI-CONTEXT WORKFLOW RESULT: FAIL")
+        print("Reason: Trusted context validation failed.")
+        print(f"Run report written to: {report_path}")
+        return context_validation_result
 
     regression_inputs: List[Tuple[Path, Path]] = []
 
