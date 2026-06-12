@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 OLLAMA_WORKFLOW = PROJECT_ROOT / "scripts" / "run_ollama_requirements_workflow.py"
 MULTI_CONTEXT_REGRESSION = PROJECT_ROOT / "scripts" / "run_multi_context_regression_tests.py"
+RUN_REPORT_VALIDATOR = PROJECT_ROOT / "scripts" / "validate_run_report.py"
 
 
 def now_utc() -> str:
@@ -159,6 +160,7 @@ def validate_required_files(cases: list[dict[str, Path | str]]) -> List[str]:
     required_files = [
         OLLAMA_WORKFLOW,
         MULTI_CONTEXT_REGRESSION,
+        RUN_REPORT_VALIDATOR,
         *[case["context"] for case in cases],
     ]
 
@@ -252,6 +254,26 @@ def run_multi_context_regression(
     return result, regression_report
 
 
+def validate_run_report(report_path: Path) -> tuple[int, dict[str, Any]]:
+    command = [
+        sys.executable,
+        str(RUN_REPORT_VALIDATOR),
+        str(report_path),
+    ]
+
+    result, step_report = run_step(
+        "Validate run report",
+        command,
+    )
+
+    validation_report = {
+        "result": "pass" if result == 0 else "fail",
+        "step": step_report,
+    }
+
+    return result, validation_report
+
+
 def main() -> int:
     args = parse_args()
     output_dir = resolve_project_path(args.output_dir)
@@ -275,6 +297,7 @@ def main() -> int:
         "result": "fail",
         "contexts": [],
         "multi_context_regression": None,
+        "run_report_validation": None,
     }
 
     started_time = time.perf_counter()
@@ -365,6 +388,17 @@ def main() -> int:
     report["duration_seconds"] = round(time.perf_counter() - started_time, 3)
     report["result"] = "pass"
     write_json(report_path, report)
+
+    report_validation_result, report_validation = validate_run_report(report_path)
+    report["run_report_validation"] = report_validation
+    write_json(report_path, report)
+
+    if report_validation_result != 0:
+        print()
+        print("DEMO MULTI-CONTEXT WORKFLOW RESULT: FAIL")
+        print("Reason: Run report validation failed.")
+        print(f"Run report written to: {report_path}")
+        return report_validation_result
 
     print()
     print("DEMO MULTI-CONTEXT WORKFLOW RESULT: PASS")

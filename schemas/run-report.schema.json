@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Demo Workflow Run Report",
+  "type": "object",
+  "required": [
+    "workflow",
+    "model",
+    "temperature",
+    "output_dir",
+    "report_path",
+    "context_discovery",
+    "started_at",
+    "ended_at",
+    "duration_seconds",
+    "result",
+    "contexts",
+    "multi_context_regression"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "workflow": {
+      "type": "string",
+      "const": "demo-multi-context"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "temperature": {
+      "type": "number"
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_discovery": {
+      "type": "object",
+      "required": [
+        "mode",
+        "context_count"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "explicit"
+          ]
+        },
+        "pattern": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "context_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ended_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "contexts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/context_result"
+      }
+    },
+    "multi_context_regression": {
+      "type": "object",
+      "required": [
+        "result",
+        "step"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "step": {
+          "$ref": "#/$defs/step_result"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "context_result": {
+      "type": "object",
+      "required": [
+        "name",
+        "context_path",
+        "generated_prompt_path",
+        "generated_output_path",
+        "normalized_output_path",
+        "enriched_output_path",
+        "failed_generation_path",
+        "failed_repair_path",
+        "repair_used",
+        "result",
+        "step"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_prompt_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_output_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "normalized_output_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enriched_output_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failed_generation_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failed_repair_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repair_used": {
+          "type": "boolean"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "step": {
+          "$ref": "#/$defs/step_result"
+        }
+      }
+    },
+    "step_result": {
+      "type": "object",
+      "required": [
+        "name",
+        "command",
+        "started_at",
+        "ended_at",
+        "duration_seconds",
+        "return_code",
+        "result"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "started_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ended_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "return_code": {
+          "type": "integer"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        }
+      }
+    }
+  }
+}
