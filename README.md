@@ -612,6 +612,24 @@ Current main proof command:
 ```powershell
 python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
 ```
+## Local CI-Style Proof Command
+
+The main local proof command is:
+
+```powershell
+python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
+
+This command acts as a local CI-style check for the project.
+
+It validates:
+
+* trusted context files
+* generated/enriched model outputs
+* semantic grounding
+* negative regression cases
+* multi-context regression
+* run-report.json
+```
 
 ## Limitations
 
