@@ -544,6 +544,45 @@ PASS: Run report matches the schema.
 
 The reproducible demo workflow runs this validation automatically before printing the final pass result.
 
+## Model Comparison Runner
+
+The model comparison runner executes the reproducible demo workflow for one or more Ollama models and summarizes the results.
+
+Run with the current local model:
+
+```powershell
+python .\scripts\run_model_comparison.py --model qwen3:4b
+```
+The runner writes:
+
+```text
+scratch/model-comparison/model-comparison-summary.json
+scratch/model-comparison/<model-name>/run-report.json
+```
+
+It compares:
+
+```text
+final result
+context count
+repair count
+failed context count
+multi-context regression result
+run-report validation result
+duration
+```
+
+Example multi-model usage:
+
+```powershell
+python .\scripts\run_model_comparison.py `
+  --model qwen3:4b `
+  --model llama3.1:8b `
+  --model mistral:7b
+```
+
+Runtime files are written to `scratch/`, which is ignored by Git.
+
 ## Key Result
 
 The strongest workflow so far is:
