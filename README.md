@@ -14,6 +14,7 @@ This project is not a generic chatbot or prompt demo. It explores how to make lo
 * positive and negative regression checks
 * multi-context regression testing
 * structured run reporting
+* run-report schema validation
 * repeatable CLI workflows
 
 ## Why This Project Exists
@@ -50,6 +51,14 @@ The first context is report-oriented. The second context is admin workflow/UI-or
 
 This helps prove that the validation workflow is not tied to one hardcoded requirement.
 
+The demo workflow automatically discovers all files matching:
+
+```text
+contexts/*-context.json
+```
+
+So adding another context later does not require changing the demo script.
+
 The system produces structured engineering output such as:
 
 * facts used
@@ -74,7 +83,8 @@ trusted context JSON
 → schema validation
 → context-driven semantic validation v3
 → positive/negative regression tests
-→ run report
+→ structured run report
+→ run-report schema validation
 → PASS/FAIL
 ```
 
@@ -113,7 +123,8 @@ requirements-intelligence-assistant/
 ├── prompts/
 │   └── prompt templates and earlier prompt experiments
 ├── schemas/
-│   └── requirements-analysis.schema.json
+│   ├── requirements-analysis.schema.json
+│   └── run-report.schema.json
 ├── scripts/
 │   ├── build_prompt_from_context.py
 │   ├── enrich_model_output.py
@@ -131,7 +142,8 @@ requirements-intelligence-assistant/
 │   ├── validate_model_output.py
 │   ├── validate_pipeline.py
 │   ├── validate_pipeline_v2.py
-│   └── validate_pipeline_v3.py
+│   ├── validate_pipeline_v3.py
+│   └── validate_run_report.py
 ├── requirements.txt
 └── README.md
 ```
@@ -431,9 +443,15 @@ This proves that context-driven semantic validation v3 is reusable across more t
 
 ## Reproducible Demo Workflow
 
-The demo workflow regenerates outputs for all included requirement contexts before running regression tests.
+The demo workflow regenerates outputs for all discovered requirement contexts before running regression tests.
 
-This avoids relying on old files in `scratch/`.
+By default, the demo runner automatically discovers all files matching:
+
+```text
+contexts/*-context.json
+```
+
+This avoids relying on old files in `scratch/` and allows new contexts to be picked up without changing the script.
 
 Run:
 
@@ -454,7 +472,8 @@ all contexts matching contexts/*-context.json
 
 all enriched outputs
 → multi-context regression tests
-→ run-report.json	
+→ run-report.json
+→ validate run-report.json
 ```
 
 Expected result:
@@ -487,6 +506,8 @@ The report records:
 
 * model name
 * temperature
+* context discovery mode
+* context count
 * output directory
 * context paths
 * generated prompt paths
@@ -498,9 +519,30 @@ The report records:
 * per-step start and end timestamps
 * per-step duration
 * return codes
-* final result
+* multi-context regression result
+* final workflow result
 
 This makes the demo easier to inspect and helps prepare for future model comparisons.
+
+The run report is also validated against:
+
+```text
+schemas/run-report.schema.json
+```
+
+Manual validation command:
+
+```powershell
+python .\scripts\validate_run_report.py .\scratch\demo-multi-context\run-report.json
+```
+
+Expected result:
+
+```text
+PASS: Run report matches the schema.
+```
+
+The reproducible demo workflow runs this validation automatically before printing the final pass result.
 
 ## Key Result
 
@@ -518,6 +560,7 @@ trusted context
 → positive and negative regression proof
 → multi-context regression proof
 → structured run report
+→ run-report schema validation
 ```
 
 This demonstrates a production-oriented approach:
@@ -536,6 +579,7 @@ This demonstrates a production-oriented approach:
 | Regression proof                        | Positive and negative test runners |
 | Multi-context proof                     | Multi-context regression runner    |
 | Run evidence                            | Structured run report              |
+| Run-report structure                    | Run-report schema validator        |
 
 ## Current Status
 
@@ -561,13 +605,12 @@ Completed:
 * reproducible multi-context demo workflow
 * malformed JSON repair fallback
 * structured run report
+* run report schema validation
 
 Current main proof command:
 
 ```powershell
 python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
-
-By default, the demo runner automatically discovers all files matching `contexts/*-context.json`, so adding a new context does not require changing the script.
 ```
 
 ## Limitations
@@ -596,9 +639,9 @@ Current limitations:
 
 Recommended next steps:
 
-1. Add a proper run/evaluation report system for comparing multiple model runs.
-2. Add a third requirement context or start deriving trusted context from less structured input.
-3. Add CI regression checks once the script interface stabilizes.
+1. Add a third requirement context or start deriving trusted context from less structured input.
+2. Add CI regression checks once the script interface stabilizes.
+3. Add model-run comparison using structured run reports.
 4. Add a lightweight API or UI around the workflow.
 5. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
 
@@ -618,6 +661,7 @@ This project demonstrates practical LLM engineering skills:
 * positive and negative regression testing
 * multi-context validation
 * structured run reporting
+* run-report validation
 * production-style accept/reject workflows
 
 The positioning is:
