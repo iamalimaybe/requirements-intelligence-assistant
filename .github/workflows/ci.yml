@@ -1,0 +1,62 @@
+name: Deterministic Validation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate schemas and trusted contexts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate JSON Schema files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema.validators import validator_for
+
+          schema_paths = sorted(Path("schemas").glob("*.schema.json"))
+
+          if not schema_paths:
+              raise SystemExit("FAIL: No schema files found.")
+
+          for schema_path in schema_paths:
+              with schema_path.open("r", encoding="utf-8") as file:
+                  schema = json.load(file)
+
+              validator_class = validator_for(schema)
+              validator_class.check_schema(schema)
+
+              print(f"PASS: {schema_path}")
+
+          print(f"PASS: {len(schema_paths)} schema file(s) are valid JSON Schema documents.")
+          PY
+
+      - name: Validate trusted context files
+        run: |
+          python scripts/validate_context.py \
+            contexts/payment-webhook-context.json \
+            contexts/production-report-context.json \
+            contexts/review-moderation-context.json
