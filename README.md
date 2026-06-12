@@ -10,7 +10,10 @@ This project is not a generic chatbot or prompt demo. It explores how to make lo
 * trusted-context enrichment
 * JSON Schema validation
 * context-driven semantic validation
+* malformed JSON repair fallback
 * positive and negative regression checks
+* multi-context regression testing
+* structured run reporting
 * repeatable CLI workflows
 
 ## Why This Project Exists
@@ -19,6 +22,7 @@ Local LLMs can produce useful analysis, but they are unreliable when used direct
 
 Observed failure modes include:
 
+* malformed JSON
 * invented table names
 * invented endpoint names
 * unsupported database assumptions
@@ -35,7 +39,16 @@ The model is used as a draft generator. Code decides whether the output is accep
 
 ## Current Scope
 
-The current implemented workflow analyzes a **Production Report** requirement.
+The project currently includes two requirement contexts:
+
+```text
+contexts/production-report-context.json
+contexts/review-moderation-context.json
+```
+
+The first context is report-oriented. The second context is admin workflow/UI-oriented.
+
+This helps prove that the validation workflow is not tied to one hardcoded requirement.
 
 The system produces structured engineering output such as:
 
@@ -55,10 +68,13 @@ trusted context JSON
 → generated prompt
 → Ollama API
 → raw model JSON
+→ malformed JSON repair fallback if needed
 → normalize
 → enrich from trusted context
 → schema validation
 → context-driven semantic validation v3
+→ positive/negative regression tests
+→ run report
 → PASS/FAIL
 ```
 
@@ -88,7 +104,8 @@ This project intentionally uses a small local model to test practical local LLM 
 ```text
 requirements-intelligence-assistant/
 ├── contexts/
-│   └── production-report-context.json
+│   ├── production-report-context.json
+│   └── review-moderation-context.json
 ├── evals/
 │   └── evaluation notes and model run summaries
 ├── model-outputs/
@@ -102,6 +119,8 @@ requirements-intelligence-assistant/
 │   ├── enrich_model_output.py
 │   ├── generate_with_ollama.py
 │   ├── normalize_model_output.py
+│   ├── run_demo_multi_context_workflow.py
+│   ├── run_multi_context_regression_tests.py
 │   ├── run_ollama_requirements_workflow.py
 │   ├── run_requirements_workflow.py
 │   ├── run_validation_v3_negative_tests.py
@@ -150,10 +169,11 @@ jsonschema>=4.0.0
 
 Requirement-specific facts are stored in trusted context JSON.
 
-Current context file:
+Current context files:
 
 ```text
 contexts/production-report-context.json
+contexts/review-moderation-context.json
 ```
 
 The trusted context is the semantic source of truth for:
@@ -171,7 +191,7 @@ This prevents the model from being the only source of truth.
 
 ## Prompt Generation From Context
 
-The prompt can be generated from the trusted context instead of being manually maintained.
+The prompt can be generated from trusted context instead of being manually maintained.
 
 Run:
 
@@ -185,9 +205,7 @@ This keeps requirement-specific information in the context file and reduces dupl
 
 ## One-Command Local LLM Workflow
 
-The preferred workflow starts from trusted context JSON.
-
-Run:
+Run a single context through prompt generation, Ollama, normalization, enrichment, and validation:
 
 ```powershell
 python .\scripts\run_ollama_requirements_workflow.py `
@@ -197,17 +215,6 @@ python .\scripts\run_ollama_requirements_workflow.py `
   --generated-output .\scratch\context-only-generated-output.json `
   --normalized-output .\scratch\context-only-normalized-output.json `
   --enriched-output .\scratch\context-only-enriched-output.json
-```
-
-This command performs:
-
-```text
-trusted context
-→ generated prompt
-→ Ollama model output
-→ normalize
-→ enrich
-→ validate with pipeline v3
 ```
 
 Expected result:
@@ -390,32 +397,10 @@ python .\scripts\run_validation_v3_regression_tests.py `
 Expected result:
 
 ```text
-STEP: Positive validation test
-------------------------------
-Running schema validation...
-PASS: Model output matches the schema.
-Running semantic validation v3...
-SEMANTIC VALIDATION V3 RESULT: PASS
-PIPELINE V3 RESULT: PASS
-
-STEP: Negative validation tests
--------------------------------
-[PASS] missing-required-fact: rejected as expected.
-[PASS] invalid-status: rejected as expected.
-[PASS] blocked-without-depends-on: rejected as expected.
-[PASS] invalid-hallucination-result: rejected as expected.
-[PASS] invented-db-engine: rejected as expected.
-[PASS] invented-frontend-framework: rejected as expected.
-[PASS] unsupported-implementation-estimate: rejected as expected.
-[PASS] fake-sample-value: rejected as expected.
-NEGATIVE TEST RESULT: PASS
-
 REGRESSION TEST RESULT: PASS
 ```
 
-This is the strongest current proof command for the project.
-
-It demonstrates:
+This demonstrates:
 
 ```text
 known-good output passes
@@ -433,7 +418,16 @@ python .\scripts\run_multi_context_regression_tests.py `
   .\scratch\context-only-enriched-output.json `
   .\contexts\production-report-context.json `
   .\scratch\review-moderation-enriched-output.json `
-  .\contexts\review-moderation-context.json```
+  .\contexts\review-moderation-context.json
+```
+
+Expected result:
+
+```text
+MULTI-CONTEXT REGRESSION RESULT: PASS
+```
+
+This proves that context-driven semantic validation v3 is reusable across more than one requirement type.
 
 ## Reproducible Demo Workflow
 
@@ -450,14 +444,7 @@ python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
 This command performs:
 
 ```text
-Production Report context
-→ generate prompt
-→ call Ollama
-→ normalize
-→ enrich
-→ validate with pipeline v3
-
-Review Moderation context
+all contexts matching contexts/*-context.json
 → generate prompt
 → call Ollama
 → repair malformed JSON if needed
@@ -465,8 +452,9 @@ Review Moderation context
 → enrich
 → validate with pipeline v3
 
-Both enriched outputs
+all enriched outputs
 → multi-context regression tests
+→ run-report.json	
 ```
 
 Expected result:
@@ -487,6 +475,33 @@ scratch/demo-multi-context/
 
 These files are ignored by Git.
 
+## Run Report
+
+The reproducible demo workflow writes a structured run report:
+
+```text
+scratch/demo-multi-context/run-report.json
+```
+
+The report records:
+
+* model name
+* temperature
+* output directory
+* context paths
+* generated prompt paths
+* generated output paths
+* normalized output paths
+* enriched output paths
+* whether JSON repair was used
+* failed generation path, if any
+* per-step start and end timestamps
+* per-step duration
+* return codes
+* final result
+
+This makes the demo easier to inspect and helps prepare for future model comparisons.
+
 ## Key Result
 
 The strongest workflow so far is:
@@ -495,26 +510,32 @@ The strongest workflow so far is:
 trusted context
 → prompt generation
 → local LLM generation
+→ malformed JSON repair fallback
 → deterministic normalization
 → trusted-context enrichment
 → schema validation
 → context-driven semantic validation v3
 → positive and negative regression proof
+→ multi-context regression proof
+→ structured run report
 ```
 
 This demonstrates a production-oriented approach:
 
-| Responsibility                          | Owner                             |
-| --------------------------------------- | --------------------------------- |
-| Drafting analysis                       | Local LLM                         |
-| Supplying known facts                   | Trusted context                   |
-| Building prompts                        | Deterministic prompt builder      |
-| Fixing predictable structure issues     | Normalizer                        |
-| Filling required context-backed content | Enricher                          |
-| Enforcing JSON structure                | JSON Schema                       |
-| Checking semantic groundedness          | Semantic validator v3             |
-| Accept/reject decision                  | Validation pipeline               |
-| Regression proof                        | Positive and negative test runner |
+| Responsibility                          | Owner                              |
+| --------------------------------------- | ---------------------------------- |
+| Drafting analysis                       | Local LLM                          |
+| Supplying known facts                   | Trusted context                    |
+| Building prompts                        | Deterministic prompt builder       |
+| Handling malformed JSON                 | JSON repair fallback               |
+| Fixing predictable structure issues     | Normalizer                         |
+| Filling required context-backed content | Enricher                           |
+| Enforcing JSON structure                | JSON Schema                        |
+| Checking semantic groundedness          | Semantic validator v3              |
+| Accept/reject decision                  | Validation pipeline                |
+| Regression proof                        | Positive and negative test runners |
+| Multi-context proof                     | Multi-context regression runner    |
+| Run evidence                            | Structured run report              |
 
 ## Current Status
 
@@ -535,11 +556,18 @@ Completed:
 * context-driven semantic validation v3
 * negative validation tests
 * regression test runner
+* second requirement context
+* multi-context regression runner
+* reproducible multi-context demo workflow
+* malformed JSON repair fallback
+* structured run report
 
 Current main proof command:
 
 ```powershell
 python .\scripts\run_demo_multi_context_workflow.py --model qwen3:4b
+
+By default, the demo runner automatically discovers all files matching `contexts/*-context.json`, so adding a new context does not require changing the script.
 ```
 
 ## Limitations
@@ -554,9 +582,11 @@ Prompting alone is not enough.
 
 Current limitations:
 
-* only one requirement context has been implemented so far
+* only two requirement contexts have been implemented so far
+* both contexts are still hand-written structured JSON files
 * semantic validation uses deterministic heuristics, not full human understanding
 * the validator can catch defined hallucination patterns, not every possible bad answer
+* JSON repair only handles malformed model output, not semantic correctness
 * no UI or API layer yet
 * no retrieval-augmented generation yet
 * no CI workflow yet
@@ -566,11 +596,11 @@ Current limitations:
 
 Recommended next steps:
 
-1. Add a second or third requirement context to prove the workflow is reusable.
-2. Add a proper run/evaluation report system so multiple model runs can be compared.
-3. Add a lightweight API or UI around the workflow.
-4. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
-5. Add CI regression checks once the script interface stabilizes.
+1. Add a proper run/evaluation report system for comparing multiple model runs.
+2. Add a third requirement context or start deriving trusted context from less structured input.
+3. Add CI regression checks once the script interface stabilizes.
+4. Add a lightweight API or UI around the workflow.
+5. Move toward retrieval-augmented generation over real requirement documents, tickets, emails, or PDFs.
 
 ## Portfolio Positioning
 
@@ -582,9 +612,12 @@ This project demonstrates practical LLM engineering skills:
 * validation-first output handling
 * deterministic normalization
 * trusted-context grounding
+* malformed JSON repair
 * context-driven semantic validation
 * hallucination rejection
 * positive and negative regression testing
+* multi-context validation
+* structured run reporting
 * production-style accept/reject workflows
 
 The positioning is:
