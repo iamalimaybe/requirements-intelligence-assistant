@@ -1,0 +1,213 @@
+{
+  "requirement_name": "Payment Webhook Processing",
+  "summary": "Process payment webhook events from an external payment provider and update internal payment/order state safely.",
+  "known_facts": [
+    "Feature name: Payment Webhook Processing.",
+    "The system must receive webhook events from an external payment provider.",
+    "The exact payment provider is not confirmed yet.",
+    "Webhook requests must be authenticated or verified before processing.",
+    "The exact signature verification method is not confirmed yet.",
+    "Webhook events may be delivered more than once.",
+    "Webhook processing must be idempotent.",
+    "The system must update internal payment or order state after a valid webhook event is processed.",
+    "The exact internal payment or order table is not provided yet.",
+    "The exact webhook payload fields are not provided yet.",
+    "The exact supported event types are not provided yet.",
+    "Failed webhook processing should be observable for troubleshooting."
+  ],
+  "required_unknowns": [
+    "payment provider",
+    "signature verification method",
+    "webhook payload fields",
+    "supported event types",
+    "internal payment or order table",
+    "retry and failure handling policy"
+  ],
+  "client_questions": [
+    "Which payment provider will send the webhook events?",
+    "What signature verification method should be used for webhook authentication?",
+    "What webhook payload fields will be sent by the provider?",
+    "Which webhook event types must be supported?",
+    "Which internal payment or order table should be updated after processing a valid event?",
+    "What retry and failure handling policy should be used for failed webhook processing?"
+  ],
+  "required_backend_tasks": [
+    {
+      "task": "Define the webhook endpoint contract without assuming a payment provider",
+      "status": "ready",
+      "reason": "The requirement confirms that webhook events must be received from an external payment provider, but the exact provider is not confirmed.",
+      "depends_on": []
+    },
+    {
+      "task": "Implement webhook request verification after the signature verification method is confirmed",
+      "status": "blocked",
+      "reason": "The exact signature verification method is not confirmed yet.",
+      "depends_on": [
+        "signature verification method"
+      ]
+    },
+    {
+      "task": "Parse webhook payload fields after the provider payload contract is confirmed",
+      "status": "blocked",
+      "reason": "The exact webhook payload fields are not provided yet.",
+      "depends_on": [
+        "webhook payload fields"
+      ]
+    },
+    {
+      "task": "Map supported webhook event types to internal processing actions",
+      "status": "blocked",
+      "reason": "The exact supported event types are not provided yet.",
+      "depends_on": [
+        "supported event types"
+      ]
+    },
+    {
+      "task": "Update internal payment or order state after valid webhook processing",
+      "status": "blocked",
+      "reason": "The exact internal payment or order table is not provided yet.",
+      "depends_on": [
+        "internal payment or order table"
+      ]
+    },
+    {
+      "task": "Add idempotency handling for duplicate webhook events",
+      "status": "ready",
+      "reason": "The requirement states that webhook events may be delivered more than once and processing must be idempotent.",
+      "depends_on": []
+    },
+    {
+      "task": "Add failure logging for webhook processing errors",
+      "status": "ready",
+      "reason": "Failed webhook processing should be observable for troubleshooting.",
+      "depends_on": []
+    },
+    {
+      "task": "Apply retry and failure handling behavior after the policy is confirmed",
+      "status": "blocked",
+      "reason": "The retry and failure handling policy is not confirmed yet.",
+      "depends_on": [
+        "retry and failure handling policy"
+      ]
+    }
+  ],
+  "required_frontend_tasks": [
+    {
+      "task": "Expose webhook processing status in an admin view only if operational visibility is required",
+      "status": "optional",
+      "reason": "The requirement only states that failures should be observable; it does not explicitly require a frontend screen.",
+      "depends_on": []
+    }
+  ],
+  "required_database_considerations": [
+    {
+      "item": "Identify the internal payment or order table that should be updated",
+      "status": "blocked",
+      "reason": "The exact internal payment or order table is not provided yet.",
+      "depends_on": [
+        "internal payment or order table"
+      ]
+    },
+    {
+      "item": "Store enough webhook event information to support idempotency",
+      "status": "ready",
+      "reason": "Webhook events may be delivered more than once and processing must be idempotent.",
+      "depends_on": []
+    },
+    {
+      "item": "Store webhook processing failure details for troubleshooting",
+      "status": "ready",
+      "reason": "Failed webhook processing should be observable for troubleshooting.",
+      "depends_on": []
+    },
+    {
+      "item": "Confirm whether retry metadata needs to be stored",
+      "status": "blocked",
+      "reason": "The retry and failure handling policy is not confirmed yet.",
+      "depends_on": [
+        "retry and failure handling policy"
+      ]
+    }
+  ],
+  "required_test_cases": [
+    {
+      "name": "Validate webhook verification blocks unverified requests",
+      "status": "blocked",
+      "given": "A webhook request is received without valid verification",
+      "expected": "The request is rejected and no internal payment or order state is updated.",
+      "depends_on": [
+        "signature verification method"
+      ]
+    },
+    {
+      "name": "Validate duplicate webhook event is processed idempotently",
+      "status": "ready",
+      "given": "The same webhook event is received more than once",
+      "expected": "The internal payment or order state is not updated more than once for the same event.",
+      "depends_on": []
+    },
+    {
+      "name": "Validate supported event type processing",
+      "status": "blocked",
+      "given": "A supported webhook event type is received",
+      "expected": "The correct internal payment or order state change is applied.",
+      "depends_on": [
+        "supported event types",
+        "internal payment or order table"
+      ]
+    },
+    {
+      "name": "Validate unsupported event type handling",
+      "status": "blocked",
+      "given": "An unsupported webhook event type is received",
+      "expected": "The event is handled safely without applying an unsupported state change.",
+      "depends_on": [
+        "supported event types"
+      ]
+    },
+    {
+      "name": "Validate failed webhook processing is observable",
+      "status": "ready",
+      "given": "Webhook processing fails",
+      "expected": "Failure details are recorded for troubleshooting.",
+      "depends_on": []
+    }
+  ],
+  "required_hallucination_checks": [
+    {
+      "check": "No payment provider is invented",
+      "result": "warning",
+      "notes": "The exact payment provider is not confirmed yet."
+    },
+    {
+      "check": "No signature algorithm is invented",
+      "result": "warning",
+      "notes": "The exact signature verification method is not confirmed yet."
+    },
+    {
+      "check": "No webhook payload fields are invented",
+      "result": "warning",
+      "notes": "The exact webhook payload fields are not provided yet."
+    },
+    {
+      "check": "No webhook event types are invented",
+      "result": "warning",
+      "notes": "The exact supported event types are not provided yet."
+    },
+    {
+      "check": "No internal table name is invented",
+      "result": "warning",
+      "notes": "The exact internal payment or order table is not provided yet."
+    },
+    {
+      "check": "No retry strategy is invented",
+      "result": "warning",
+      "notes": "The retry and failure handling policy is not confirmed yet."
+    },
+    {
+      "check": "Idempotency requirement is preserved",
+      "result": "pass",
+      "notes": "The context states that webhook events may be delivered more than once and processing must be idempotent."
+    }
+  ]
+}

@@ -248,6 +248,41 @@ def full_text(value: Any) -> str:
     return item_to_text(value)
 
 
+def validate_required_strings_in_section(
+    output: dict,
+    context: dict,
+    output_field: str,
+    context_field: str,
+    errors: list[str],
+) -> None:
+    output_values = output.get(output_field, [])
+    required_values = context.get(context_field, [])
+
+    if not isinstance(output_values, list):
+        errors.append(f"{output_field} must be a list.")
+        return
+
+    normalized_output_values = [
+        normalize_text(value)
+        for value in output_values
+        if isinstance(value, str)
+    ]
+
+    for required_value in required_values:
+        if not isinstance(required_value, str):
+            continue
+
+        normalized_required_value = normalize_text(required_value)
+
+        if not any(
+            normalized_required_value == normalized_output_value
+            for normalized_output_value in normalized_output_values
+        ):
+            errors.append(
+                f"Missing required {output_field} item: {required_value}"
+            )
+
+
 def add_items_from_value(value: Any, items: List[Any]) -> None:
     if isinstance(value, list):
         for child in value:
@@ -645,7 +680,7 @@ def validate_unsupported_term_groups(
             continue
 
         for term in group:
-            for start, _ in find_term_occurrences(output_text, term):
+            for start, end in find_term_occurrences(output_text, term):
                 if is_guarded_mention(output_text, start, end):
                     continue
 
@@ -735,6 +770,16 @@ def validate_risky_unsupported_hallucinations(output_data: Any, context_data: An
 
 def validate(output_data: Any, context_data: Any) -> List[str]:
     errors = []
+
+    if isinstance(output_data, dict) and isinstance(context_data, dict):
+        validate_required_strings_in_section(
+            output=output_data,
+            context=context_data,
+            output_field="facts_used",
+            context_field="known_facts",
+            errors=errors,
+        )
+
     errors.extend(validate_category_coverage(output_data, context_data))
     errors.extend(validate_status_values(output_data))
     errors.extend(validate_hallucination_result_values(output_data))

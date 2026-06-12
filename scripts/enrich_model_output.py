@@ -132,6 +132,27 @@ def merge_string_lists(existing: list[str], required: list[str]) -> list[str]:
 
     return merged
 
+
+def merge_exact_string_lists(existing: list[str], required: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+
+    for value in [*required, *existing]:
+        if not isinstance(value, str) or not value.strip():
+            continue
+
+        cleaned_value = value.strip()
+        key = normalize_text(cleaned_value)
+
+        if key in seen:
+            continue
+
+        merged.append(cleaned_value)
+        seen.add(key)
+
+    return merged
+
+
 def item_key(item: dict[str, Any], key_field: str) -> str:
     value = item.get(key_field)
 
@@ -373,7 +394,7 @@ def enrich_output(model_output: dict[str, Any], context: dict[str, Any]) -> dict
     )
 
     enriched = {
-        "facts_used": merge_string_lists(
+        "facts_used": merge_exact_string_lists(
             normalized_model_output.get("facts_used", []),
             context.get("known_facts", []),
         ),
